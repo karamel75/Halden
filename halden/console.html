@@ -1,0 +1,462 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Halden Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --nuit:#0B1426; --nuit2:#111D35; --abysse:#050A15; --champagne:#C9A86A; --bronze:#8A6A3A; --ardoise:#3A4A63;
+  --bg:#F4F5F7; --surface:#FFFFFF; --surface2:#FAFAFB; --ink:#0B1426; --ink2:#5B6472; --ink3:#8A93A1;
+  --line:#E3E6EB; --line2:#EEF0F3; --tint:#F3EEE4;
+  --ok:#2E7D5B; --ok-bg:#E7F3ED; --regle:#3A4A63; --regle-bg:#E8EBF0; --val:#8A6A3A; --val-bg:#F3EEE4;
+  --hum:#B42318; --hum-bg:#FBEAE8; --shadow:0 1px 2px rgba(11,20,38,.04),0 8px 24px rgba(11,20,38,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#070D1A; --surface:#0E182C; --surface2:#111D33; --ink:#EEF0F4; --ink2:#A6AFBD; --ink3:#7A8494;
+    --line:#1E2A42; --line2:#18233A; --tint:#2A2418; --ok:#6CC59A; --ok-bg:#12291F; --regle:#AFBBD0; --regle-bg:#1A2438;
+    --val:#D9B97C; --val-bg:#2A2418; --hum:#F08A7E; --hum-bg:#341A19; --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#070D1A; --surface:#0E182C; --surface2:#111D33; --ink:#EEF0F4; --ink2:#A6AFBD; --ink3:#7A8494;
+  --line:#1E2A42; --line2:#18233A; --tint:#2A2418; --ok:#6CC59A; --ok-bg:#12291F; --regle:#AFBBD0; --regle-bg:#1A2438;
+  --val:#D9B97C; --val-bg:#2A2418; --hum:#F08A7E; --hum-bg:#341A19; --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font-family:Montserrat,"Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:13px;line-height:1.5;-webkit-font-smoothing:antialiased}
+a{color:inherit}
+.app{display:grid;grid-template-columns:256px 1fr;min-height:100vh}
+/* --- barre latérale --- */
+aside{background:var(--nuit);color:#fff;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+aside .motif{position:absolute;inset:auto -40px -10px auto;width:300px;height:420px;opacity:.22;pointer-events:none}
+.logo{padding:26px 22px 18px}
+.logo svg{width:100%;height:auto;display:block}
+.logo svg rect{display:none}
+nav{padding:8px 12px;display:flex;flex-direction:column;gap:2px;position:relative;z-index:1}
+nav a{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;text-decoration:none;color:#B9C1CF;font-weight:500;font-size:12.5px;letter-spacing:.01em}
+nav a:hover{background:rgba(255,255,255,.05);color:#fff}
+nav a.on{background:rgba(201,168,106,.12);color:#fff}
+nav a.on .n{color:var(--champagne)}
+nav .n{font-size:10px;font-weight:600;color:#56627A;width:16px;letter-spacing:.06em}
+nav .badge{margin-left:auto;background:var(--champagne);color:var(--nuit);font-size:10px;font-weight:700;border-radius:10px;padding:1px 7px}
+.side-foot{margin-top:auto;padding:18px 22px 22px;position:relative;z-index:1;font-size:11px;color:#8792A6}
+.shadow-pill{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(201,168,106,.45);color:var(--champagne);border-radius:20px;padding:5px 11px;font-weight:600;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--champagne);box-shadow:0 0 0 3px rgba(201,168,106,.18)}
+/* --- contenu --- */
+main{min-width:0}
+.top{display:flex;align-items:flex-end;gap:16px;padding:28px 36px 20px;border-bottom:1px solid var(--line);background:var(--surface);position:sticky;top:0;z-index:5}
+.eyebrow{font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--bronze);font-weight:600}
+:root[data-theme="dark"] .eyebrow{color:var(--champagne)}
+h1{font-size:22px;margin:4px 0 0;font-weight:700;letter-spacing:-.01em}
+.top .right{margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:20px;padding:6px 12px;font-size:11.5px;color:var(--ink2);background:var(--surface)}
+.chip b{color:var(--ink);font-weight:600}
+input[type=date]{font-family:inherit;font-size:12px;border:1px solid var(--line);border-radius:8px;padding:7px 10px;background:var(--surface);color:var(--ink)}
+.btn{font-family:inherit;font-size:12px;font-weight:600;border-radius:8px;padding:8px 14px;border:1px solid var(--nuit);background:var(--nuit);color:#fff;cursor:pointer;letter-spacing:.01em}
+.btn:hover{background:#16233F}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+.btn.ghost:hover{border-color:var(--ink3)}
+.btn.ok{background:var(--ok);border-color:var(--ok)}
+.btn.no{background:transparent;color:var(--hum);border-color:var(--hum)}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.wrap{padding:28px 36px 60px;max-width:1360px}
+.view{display:none}.view.on{display:block}
+.grid{display:grid;gap:20px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+.card .hd{display:flex;align-items:baseline;gap:12px;padding:18px 22px 0}
+.card .hd h3{margin:0;font-size:14px;font-weight:700}
+.card .hd .sub{color:var(--ink3);font-size:11.5px}
+.card .bd{padding:16px 22px 22px}
+/* --- héros --- */
+.hero{position:relative;overflow:hidden;border-radius:16px;background:linear-gradient(135deg,#0F1B31,#050A15);color:#fff;padding:30px 34px;display:grid;grid-template-columns:1fr 1.15fr;gap:28px;min-height:220px}
+.hero .motif{position:absolute;right:-30px;top:-20px;width:640px;height:320px;opacity:.38;pointer-events:none}
+.hero .glow{position:absolute;right:-120px;top:-160px;width:520px;height:520px;background:radial-gradient(circle,rgba(201,168,106,.20),transparent 62%);pointer-events:none}
+.hero .eyebrow{color:var(--champagne)}
+.big{font-size:44px;font-weight:700;letter-spacing:-.02em;line-height:1.05;margin:14px 0 6px}
+.big small{font-size:16px;font-weight:600;color:var(--champagne);margin-right:8px;letter-spacing:.06em}
+.hero p{color:#AEB7C6;margin:0;max-width:460px}
+.figs{display:grid;grid-template-columns:repeat(3,1fr);gap:0;align-self:end;position:relative;background:linear-gradient(90deg,rgba(5,10,21,.0),rgba(5,10,21,.55) 12%,rgba(5,10,21,.55));padding:16px 0;border-radius:10px}
+.fig{padding:0 18px;border-left:1px solid rgba(201,168,106,.35)}
+.fig .v{font-size:21px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.fig .l{font-size:10.5px;color:#9AA4B5;text-transform:uppercase;letter-spacing:.12em;margin-top:4px}
+.fig .s{font-size:11px;color:var(--champagne);margin-top:2px}
+.progress{height:4px;background:rgba(255,255,255,.12);border-radius:4px;margin-top:22px;max-width:460px;overflow:hidden}
+.progress i{display:block;height:100%;background:var(--champagne);border-radius:4px}
+/* --- pipeline --- */
+.pipe{display:grid;grid-template-columns:repeat(7,1fr);gap:0;position:relative;padding:8px 0 4px}
+.layer{position:relative;padding:0 10px;text-align:center}
+.layer:not(:last-child)::after{content:"";position:absolute;top:27px;right:-6px;width:12px;height:1px;background:var(--champagne)}
+.layer .ic{width:54px;height:54px;border-radius:50%;margin:0 auto;border:1px solid var(--champagne);display:grid;place-items:center;font-weight:700;font-size:15px;color:var(--ink);background:var(--surface)}
+.layer.hl .ic{background:var(--nuit);color:var(--champagne);border-color:var(--nuit)}
+.layer .t{font-weight:700;font-size:12px;margin-top:10px}
+.layer .d{font-size:11px;color:var(--ink3);margin-top:2px;line-height:1.4}
+.layer .k{font-size:11px;color:var(--bronze);font-weight:600;margin-top:6px}
+:root[data-theme="dark"] .layer .k{color:var(--champagne)}
+.rule{margin-top:18px;border-top:1px solid var(--line2);padding-top:14px;display:flex;gap:28px;flex-wrap:wrap;color:var(--ink2);font-size:12px}
+.rule b{color:var(--ink)}
+/* --- niveaux --- */
+.lvl{display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;border-radius:20px;padding:3px 9px;white-space:nowrap}
+.lvl::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.AUTONOME{color:var(--ok);background:var(--ok-bg)}
+.RÈGLE{color:var(--regle);background:var(--regle-bg)}
+.VALIDATION{color:var(--val);background:var(--val-bg)}
+.HUMAIN{color:var(--hum);background:var(--hum-bg)}
+.BLOQUÉ{color:#fff;background:var(--hum)}
+/* --- barres --- */
+.bars{display:flex;flex-direction:column;gap:14px}
+.bar .row{display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px}
+.bar .row b{font-weight:600}
+.bar .track{height:10px;background:var(--line2);border-radius:5px;overflow:hidden}
+.bar .track i{display:block;height:100%;border-radius:0 4px 4px 0;background:var(--ardoise)}
+.bar.c2 .track i{background:var(--bronze)}
+.bar.c3 .track i{background:var(--hum)}
+/* --- listes --- */
+.items{display:flex;flex-direction:column}
+.item{display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:start;padding:14px 0;border-top:1px solid var(--line2)}
+.item:first-child{border-top:0}
+.item .ttl{font-weight:600;font-size:12.5px}
+.item .meta{color:var(--ink3);font-size:11.5px;margin-top:3px}
+.item .amt{font-weight:700;font-size:13px;white-space:nowrap;text-align:right}
+.item .why{color:var(--ink2);font-size:11.5px;margin-top:6px}
+details summary{cursor:pointer;color:var(--bronze);font-size:11.5px;font-weight:600;margin-top:8px;list-style:none}
+:root[data-theme="dark"] details summary{color:var(--champagne)}
+details summary::-webkit-details-marker{display:none}
+.draft{white-space:pre-wrap;background:var(--surface2);border:1px solid var(--line);border-left:2px solid var(--champagne);border-radius:8px;padding:12px 14px;margin-top:8px;font-size:12px;color:var(--ink);unicode-bidi:plaintext}
+textarea.draft{width:100%;min-height:150px;font-family:inherit;resize:vertical}
+.acts{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.tabs{display:flex;gap:4px;margin-bottom:16px;flex-wrap:wrap}
+.tab{border:1px solid var(--line);background:var(--surface);border-radius:20px;padding:6px 14px;font-size:12px;font-weight:600;color:var(--ink2);cursor:pointer;font-family:inherit}
+.tab.on{background:var(--nuit);color:#fff;border-color:var(--nuit)}
+/* --- agents --- */
+.agents{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.agent{padding:22px;position:relative;overflow:hidden}
+.agent .num{font-size:40px;font-weight:700;color:var(--champagne);line-height:1;letter-spacing:-.02em}
+.agent .et{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3);margin-top:12px;font-weight:600}
+.agent h3{margin:4px 0 6px;font-size:16px}
+.agent p{margin:0;color:var(--ink2);font-size:12px;min-height:54px}
+.agent .st{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0}
+.agent ul{margin:0;padding:12px 0 0;border-top:1px solid var(--line2);list-style:none;font-size:11.5px;color:var(--ink2)}
+.agent li{padding:3px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.agent li::before{content:"— ";color:var(--champagne)}
+.agent.pilot{border-color:var(--champagne)}
+.agent.pilot::after{content:"PILOTE";position:absolute;top:22px;right:22px;font-size:9.5px;font-weight:700;letter-spacing:.14em;color:var(--nuit);background:var(--champagne);padding:3px 8px;border-radius:4px}
+/* --- tables --- */
+.tbl{width:100%;border-collapse:collapse;font-size:12px}
+.tbl th{text-align:left;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3);font-weight:600;padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap;position:sticky;top:0;background:var(--surface)}
+.tbl td{padding:10px 12px;border-bottom:1px solid var(--line2);vertical-align:top}
+.tbl tr:hover td{background:var(--surface2)}
+.tbl .mono{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:11px;color:var(--ink3);white-space:nowrap}
+.tbl .mono.lib{white-space:normal;min-width:160px}
+.scroll{overflow:auto;max-height:640px}
+.num-r{text-align:right;white-space:nowrap}
+.dots{display:inline-flex;gap:3px}
+.dots i{width:7px;height:7px;border-radius:50%;background:var(--line)}
+.dots i.f{background:var(--ardoise)}
+.dots.c i.f{background:var(--bronze)}
+.banner{display:flex;align-items:center;gap:14px;padding:16px 22px;border-radius:12px;margin-bottom:20px;border:1px solid var(--line);background:var(--surface)}
+.banner .ic{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;font-weight:700;background:var(--ok-bg);color:var(--ok)}
+.banner.bad .ic{background:var(--hum-bg);color:var(--hum)}
+.timeline{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.cy{padding:20px 22px}
+.cy .d{font-size:18px;font-weight:700}
+.cy ul{padding:0;margin:10px 0 0;list-style:none;font-size:11.5px;color:var(--ink2)}
+.cy li{padding:3px 0}
+.cy li::before{content:"· ";color:var(--champagne);font-weight:700}
+.toast{position:fixed;bottom:22px;right:22px;background:var(--nuit);color:#fff;padding:12px 18px;border-radius:10px;font-size:12px;box-shadow:var(--shadow);opacity:0;transform:translateY(8px);transition:.25s;z-index:20;border-left:3px solid var(--champagne)}
+.toast.on{opacity:1;transform:none}
+.muted{color:var(--ink3)}
+.two{display:grid;grid-template-columns:1.1fr 1fr;gap:20px}
+.empty{color:var(--ink3);padding:20px 0;text-align:center}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--ink2);margin-bottom:14px}
+@media (max-width:1100px){.agents{grid-template-columns:repeat(2,1fr)}.two{grid-template-columns:1fr}.pipe{grid-template-columns:repeat(4,1fr);row-gap:22px}.layer::after{display:none}.timeline{grid-template-columns:1fr}}
+@media (max-width:760px){
+  .app{grid-template-columns:1fr}
+  aside{position:relative;height:auto}
+  aside .motif{display:none}
+  .logo{padding:18px 16px 8px;max-width:260px}
+  nav{flex-direction:row;overflow-x:auto;padding:6px 10px}
+  nav a{white-space:nowrap}
+  .side-foot{display:none}
+  .top{position:relative;padding:18px 16px;flex-direction:column;align-items:flex-start}
+  .top .right{margin-left:0;justify-content:flex-start}
+  .wrap{padding:18px 16px 40px}
+  .hero{grid-template-columns:1fr;padding:24px 20px}
+  .big{font-size:32px}
+  .figs{grid-template-columns:1fr 1fr 1fr}
+  .fig{padding:0 10px}.fig .v{font-size:16px}
+  .agents{grid-template-columns:1fr}
+  .pipe{grid-template-columns:repeat(2,1fr)}
+  .item{grid-template-columns:1fr}.item .amt{text-align:left}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside>
+    <svg class="motif" viewBox="0 0 300 420" aria-hidden="true" id="motif-side"></svg>
+    <div class="logo"><!--__LOGO__--></div>
+    <nav id="nav">
+      <a href="#vue" data-v="vue"><span class="n">01</span>Vue d'ensemble</a>
+      <a href="#file" data-v="file"><span class="n">02</span>File d'approbation<span class="badge" id="nb-file"></span></a>
+      <a href="#agents" data-v="agents"><span class="n">03</span>Les 6 agents</a>
+      <a href="#messages" data-v="messages"><span class="n">04</span>Messages préparés</a>
+      <a href="#banque" data-v="banque"><span class="n">05</span>Rapprochement escrow</a>
+      <a href="#journal" data-v="journal"><span class="n">06</span>Journal d'audit</a>
+      <a href="#grille" data-v="grille"><span class="n">07</span>Grille & règles</a>
+    </nav>
+    <div class="side-foot">
+      <div class="shadow-pill"><span class="dot"></span>Mode shadow</div>
+      <div>Rien n'est envoyé. Aucun argent ne bouge.<br>Données 100 % fictives.</div>
+    </div>
+  </aside>
+  <main>
+    <div class="top">
+      <div><div class="eyebrow" id="eyebrow">Back office IA · Promoteur off-plan · Dubaï</div><h1 id="titre">Vue d'ensemble</h1></div>
+      <div class="right">
+        <span class="chip">Date simulée <b id="c-date"></b></span>
+        <span class="chip">IA <b id="c-llm"></b></span>
+        <span id="ctrl"><input type="date" id="d-cycle"> <button class="btn" id="b-cycle">Lancer un cycle</button>
+        <button class="btn ghost" id="b-reset" title="Recrée la base fictive">Réinitialiser</button></span>
+        <button class="btn ghost" id="b-theme" aria-label="Changer de thème" title="Clair / sombre"><svg width="14" height="14" viewBox="0 0 16 16" style="display:block"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 1.5a6.5 6.5 0 0 1 0 13z" fill="currentColor"/></svg></button>
+      </div>
+    </div>
+    <div class="wrap">
+      <section class="view" id="v-vue"></section>
+      <section class="view" id="v-file"></section>
+      <section class="view" id="v-agents"></section>
+      <section class="view" id="v-messages"></section>
+      <section class="view" id="v-banque"></section>
+      <section class="view" id="v-journal"></section>
+      <section class="view" id="v-grille"></section>
+    </div>
+  </main>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+let D = /*__DATA__*/null;
+const STATIQUE = /*__STATIQUE__*/false;
+const TITRES = {vue:"Vue d'ensemble", file:"File d'approbation", agents:"Les 6 agents", messages:"Messages préparés",
+  banque:"Rapprochement escrow", journal:"Journal d'audit", grille:"Grille de décision & règles du pays"};
+const EYEBROWS = {vue:"Vue CFO du matin", file:"L'IA prépare · l'humain approuve", agents:"Parcours acheteur en 6 étapes",
+  messages:"Mode shadow · rien n'est envoyé", banque:"Couche 2 · ingestion · couche 5 · règles", journal:"Tout est journalisé, chaîné par hash",
+  grille:"Qui décide quoi"};
+const MOIS = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const aed = (x, d=0) => "AED " + Number(x||0).toLocaleString("en-US",{minimumFractionDigits:d,maximumFractionDigits:d});
+const aedM = x => { x = Number(x||0); return x >= 1e6 ? "AED " + (x/1e6).toFixed(2) + " M" : x >= 1e3 ? "AED " + Math.round(x/1e3) + " k" : aed(x); };
+const dfr = s => { if(!s) return ""; const d = new Date(s + "T00:00:00"); return d.getDate() + " " + MOIS[d.getMonth()] + " " + d.getFullYear(); };
+const lvl = l => `<span class="lvl ${esc(l)}">${esc(l)}</span>`;
+let filtreFile = "EN ATTENTE";
+
+function motif(svg, w, h, n, x0, curve){
+  let p = "";
+  for(let i=0;i<=n;i++){ const t=i/n, x=x0+(w-x0)*Math.pow(t,1.5), b=curve*Math.sin(Math.PI*t);
+    p += `<path d="M${x.toFixed(1)} -10 Q ${(x-b).toFixed(1)} ${h/2} ${x.toFixed(1)} ${h+10}" stroke="#C9A86A" stroke-width="1" fill="none"/>`; }
+  svg.setAttribute("viewBox", `0 0 ${w} ${h}`); svg.innerHTML = p;
+}
+
+function toast(t){ const e=document.getElementById("toast"); e.textContent=t; e.classList.add("on"); clearTimeout(e._t); e._t=setTimeout(()=>e.classList.remove("on"),2600); }
+
+async function api(path, body){
+  if(STATIQUE){ toast("Version de démonstration : lancez « python -m halden console » pour agir."); return; }
+  const r = await fetch(path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body||{})});
+  const j = await r.json(); if(!r.ok){ toast(j.erreur || "Erreur"); return; } D = j; render(); return j;
+}
+
+/* ---------------- Vue d'ensemble ---------------- */
+function vVue(){
+  const c = D.cfo, f = D.flux, prj = D.projets.find(p=>p.projet_id==="ACR") || D.projets[0];
+  const pend = D.file.filter(x=>x.statut==="EN ATTENTE");
+  const maxB = Math.max(1,...Object.values(c.buckets));
+  const taux = c.taux_auto==null ? "—" : Math.round(c.taux_auto*100)+" %";
+  const layers = [
+    ["1","Entrées","Excel, relevés, certificats, messages",f.entrees+" éléments"],
+    ["2","Ingestion","Import et normalisation",f.ingestion+" lignes bancaires"],
+    ["3","Orchestrateur","Événements et minuteries J+3/J+10/J+30",f.evenements+" événements"],
+    ["4","6 agents","Comprendre et préparer",f.propositions+" propositions",true],
+    ["5","Garde-fous","Règles, test argent/juridique, shadow",f.autorise+" auto · "+f.en_file+" en file · "+f.bloque+" bloqué"],
+    ["6","Base","Dossier acheteur, pack pays, audit",f.lignes.toLocaleString("fr-FR")+" lignes Excel"],
+    ["7","Sorties","File d'approbation, vue CFO, messages",f.sortants+" messages · "+f.decisions+" décisions"]];
+  return `
+  <div class="hero">
+    <svg class="motif" id="motif-hero" aria-hidden="true"></svg><div class="glow"></div>
+    <div style="position:relative">
+      <div class="eyebrow">${esc(dfr(D.date))} · ${esc(D.promoteur)}</div>
+      <div class="big"><small>AED</small>${(c.encaisse_total/1e6).toFixed(2)} M</div>
+      <p>encaissés au total sur les deux projets. ${esc(prj.nom)} est collecté à <b style="color:#fff">${c.acr_collecte_pct.toFixed(0)} %</b> de son prix de vente, avancement certifié ${esc(prj.avancement_pct)} %.</p>
+      <div class="progress"><i style="width:${Math.min(100,c.acr_collecte_pct).toFixed(1)}%"></i></div>
+    </div>
+    <div class="figs">
+      <div class="fig"><div class="v">${aedM(c.a_encaisser)}</div><div class="l">Appelé, non payé</div><div class="s">${c.nb_retard} échéances échues</div></div>
+      <div class="fig"><div class="v">${aedM(c.buckets["30 j et +"])}</div><div class="l">Retard 30 j et +</div><div class="s">décision humaine</div></div>
+      <div class="fig"><div class="v">${taux}</div><div class="l">Lettrage auto</div><div class="s">${c.nb_auto}/${c.nb_lignes} virements</div></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:20px">
+    <div class="hd"><h3>Le moteur, couche par couche</h3><span class="sub">ce qui s'est passé depuis le début de la simulation</span></div>
+    <div class="bd">
+      <div class="pipe">${layers.map(l=>`<div class="layer ${l[4]?"hl":""}"><div class="ic">${l[0]}</div><div class="t">${l[1]}</div><div class="d">${l[2]}</div><div class="k">${l[3]}</div></div>`).join("")}</div>
+      <div class="rule"><span><b>L'IA</b> comprend et rédige</span><span><b>Les règles</b> calculent chaque montant</span><span><b>Un humain</b> engage le promoteur</span><span><b>Jamais</b> de mouvement d'argent</span></div>
+    </div>
+  </div>
+
+  <div class="two" style="margin-top:20px">
+    <div class="card"><div class="hd"><h3>Retards par ancienneté</h3><span class="sub">reste dû sur échéances échues</span></div>
+      <div class="bd"><div class="bars">
+        ${Object.entries(c.buckets).map(([k,v],i)=>`<div class="bar c${i+1}" title="${esc(k)} : ${aed(v,2)}"><div class="row"><span>${esc(k)}</span><b>${aed(v)}</b></div><div class="track"><i style="width:${(v/maxB*100).toFixed(1)}%"></i></div></div>`).join("")}
+      </div>
+      <table class="tbl" style="margin-top:18px"><thead><tr><th>Acheteur</th><th>Lot</th><th class="num-r">Reste dû</th><th class="num-r">Retard</th></tr></thead><tbody>
+        ${c.top_retards.map(r=>`<tr><td>${esc(r.acheteur)}</td><td class="mono">${esc(r.unite)}</td><td class="num-r">${aed(r.reste)}</td><td class="num-r">${r.jours} j</td></tr>`).join("") || `<tr><td colspan="4" class="empty">Aucun retard</td></tr>`}
+      </tbody></table></div></div>
+    <div class="card"><div class="hd"><h3>Décisions qui vous attendent</h3><span class="sub">${pend.length} en attente</span></div>
+      <div class="bd"><div class="items">${pend.slice(0,7).map(itemCourt).join("") || `<div class="empty">File vide</div>`}</div>
+      ${pend.length?`<div style="margin-top:12px"><a class="btn ghost" href="#file" style="text-decoration:none;display:inline-block">Ouvrir la file</a></div>`:""}</div></div>
+  </div>
+
+  <div style="margin-top:28px"><div class="eyebrow">Chronologie de la simulation</div></div>
+  <div class="timeline" style="margin-top:12px">${D.historique.map(cy).join("") || `<div class="card cy muted">Aucun cycle lancé. Utilisez « Lancer un cycle » ou « python -m halden demo ».</div>`}</div>`;
+}
+function cy(h){
+  const tot = {}; Object.values(h.par_agent).forEach(s=>Object.entries(s).forEach(([k,v])=>{ if(k!=="propositions") tot[k]=(tot[k]||0)+v; }));
+  const ev = h.evenements.filter(e=>!e.startsWith("Virement"));
+  const vir = h.evenements.length - ev.length;
+  return `<div class="card cy"><div class="eyebrow">Cycle</div><div class="d">${esc(dfr(h.date))}</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">${Object.entries(tot).filter(([,v])=>v).map(([k,v])=>`<span class="lvl ${k}">${v} ${k}</span>`).join("")}</div>
+    <ul>${h.imports.map(i=>`<li>Relevé importé : ${esc(i)}</li>`).join("")}${vir?`<li>${vir} virements reçus sur le compte escrow</li>`:""}
+    ${ev.map(e=>`<li>${esc(e)}</li>`).join("")}<li>${h.decisions.length} décision(s) humaine(s)</li></ul></div>`;
+}
+function itemCourt(x){
+  return `<div class="item"><div>${lvl(x.niveau)}</div><div><div class="ttl">${esc(x.resume)}</div><div class="meta">${esc(x.agent)} · ${esc(x.tache_id)}${x.acheteur?" · "+esc(x.acheteur):""}</div></div><div class="amt">${x.montant_aed?aedM(x.montant_aed):""}</div></div>`;
+}
+
+/* ---------------- File ---------------- */
+function vFile(){
+  const groupes = {"EN ATTENTE":x=>x.statut==="EN ATTENTE","BLOQUÉ":x=>x.statut==="BLOQUÉ","DÉCIDÉ":x=>x.decide_par,"TOUT":()=>true};
+  const liste = D.file.filter(groupes[filtreFile]).slice().reverse();
+  return `<div class="legend">${["AUTONOME","RÈGLE","VALIDATION","HUMAIN","BLOQUÉ"].map(l=>lvl(l)+`<span>${{AUTONOME:"exécuté seul, journalisé",RÈGLE:"calcul déterministe",VALIDATION:"l'agent prépare, vous validez",HUMAIN:"vous décidez, l'agent a préparé le dossier",BLOQUÉ:"interdit par les garde-fous"}[l]}</span>`).join("")}</div>
+  <div class="tabs">${Object.keys(groupes).map(g=>`<button class="tab ${g===filtreFile?"on":""}" data-f="${g}">${g==="DÉCIDÉ"?"Décidées":g==="TOUT"?"Toutes":g==="BLOQUÉ"?"Bloquées":"En attente"} (${D.file.filter(groupes[g]).length})</button>`).join("")}</div>
+  <div class="card"><div class="bd"><div class="items">${liste.map(itemLong).join("") || `<div class="empty">Rien ici.</div>`}</div></div></div>`;
+}
+function itemLong(x){
+  const attente = x.statut==="EN ATTENTE";
+  const dec = x.decide_par ? `<div class="meta">${esc(x.statut)} par ${esc(x.decide_par)} le ${esc(dfr(x.date_decision))}${x.commentaire?" · « "+esc(x.commentaire)+" »":""}</div>` :
+    (x.statut==="BLOQUÉ" ? `<div class="meta" style="color:var(--hum)">Bloqué : transmis à un humain</div>` : "");
+  return `<div class="item"><div>${lvl(x.niveau)}</div><div>
+    <div class="meta" style="margin:0 0 3px"><span class="mono">${esc(x.file_id)}</span> · ${esc(dfr(x.date))} · ${esc(x.agent)} · ${esc(x.tache_id)}${x.acheteur?" · "+esc(x.acheteur):""}${x.unite_id?" · "+esc(x.unite_id):""}</div>
+    <div class="ttl">${esc(x.resume)}</div>
+    <div class="why">${esc(x.raisons)}</div>${dec}
+    ${x.brouillon?`<details ${attente&&x.niveau==="VALIDATION"?"":""}><summary>Voir ce que l'agent a préparé</summary>${attente&&x.niveau==="VALIDATION"&&!STATIQUE?`<textarea class="draft" id="br-${esc(x.file_id)}" dir="auto">${esc(x.brouillon)}</textarea>`:`<div class="draft" dir="auto">${esc(x.brouillon)}</div>`}</details>`:""}
+    ${attente?`<div class="acts"><button class="btn ok" data-ok="${esc(x.file_id)}">${x.niveau==="HUMAIN"?"Je prends en charge":"Approuver"}</button><button class="btn no" data-no="${esc(x.file_id)}">Rejeter</button></div>`:""}
+  </div><div class="amt">${x.montant_aed?aed(x.montant_aed,2):""}</div></div>`;
+}
+
+/* ---------------- Agents ---------------- */
+function vAgents(){
+  return `<div class="agents">${D.agents.map((a,i)=>{
+    const s = a.stats || {};
+    return `<div class="card agent ${a.nom==="Collections"?"pilot":""}"><div class="num">0${i+1}</div>
+    <div class="et">${esc(a.etape.replace(/^\d · /,""))}</div><h3>${esc(a.nom)}</h3><p>${esc(a.mission)}</p>
+    <div class="st"><span class="chip"><b>${s.propositions||0}</b> propositions</span>${["AUTONOME","RÈGLE","VALIDATION","HUMAIN","BLOQUÉ"].filter(k=>s[k]).map(k=>`<span class="lvl ${k}">${s[k]} ${k}</span>`).join("")}</div>
+    <ul>${a.derniers.slice(-4).map(t=>`<li title="${esc(t)}">${esc(t)}</li>`).join("") || `<li>Rien pour l'instant</li>`}</ul></div>`; }).join("")}</div>
+  <div class="card" style="margin-top:20px"><div class="hd"><h3>Comment ils travaillent ensemble</h3></div><div class="bd" style="color:var(--ink2);font-size:12.5px;line-height:1.7">
+    L'<b>orchestrateur</b> détecte les événements (certificat de jalon, virement, message, réserve, minuterie J+3/J+10/J+30) et réveille les agents concernés.
+    Chaque agent lit la base Excel et rend des <b>propositions</b>, jamais des actions. Les <b>garde-fous</b> les classent : autonome, règle, validation, humain ou bloqué,
+    d'après la grille de décision et le test « argent ou juridique ? ». Les montants viennent uniquement du <b>moteur de règles</b> ; un brouillon qui contient
+    un autre montant est rejeté. Exemple de bout en bout : le certificat 40 % arrive → <b>Collections</b> prépare 20 appels de fonds et <b>Relation acquéreurs</b>
+    l'actualité chantier → le CFO valide → le relevé escrow arrive → les virements référencés sont lettrés seuls, les ambigus attendent une validation
+    → les retards déclenchent J+3, J+10, puis une escalade humaine à J+30.</div></div>`;
+}
+
+/* ---------------- Messages ---------------- */
+function vMessages(){
+  const l = D.sortants.slice().reverse();
+  return `<div class="card"><div class="hd"><h3>${l.length} messages préparés</h3><span class="sub">au nom du promoteur · aucun envoyé en mode shadow</span></div><div class="bd scroll">
+  <table class="tbl"><thead><tr><th>Date</th><th>Destinataire</th><th>Canal</th><th>Langue</th><th>Objet</th><th>Agent</th><th>Statut</th></tr></thead><tbody>
+  ${l.map(m=>`<tr><td style="white-space:nowrap">${esc(dfr(m.date))}</td><td>${esc(m.acheteur||"Sous-traitant")}</td><td>${esc(m.canal||"")}</td><td>${esc(m.langue||"")}</td>
+    <td><details><summary style="color:var(--ink);font-weight:600;margin:0" dir="auto">${esc(m.objet||"")}</summary><div class="draft" dir="auto">${esc(m.texte)}</div></details></td>
+    <td class="muted">${esc(m.agent)}</td><td><span class="lvl RÈGLE">${esc(m.statut)}</span></td></tr>`).join("")}
+  </tbody></table></div></div>`;
+}
+
+/* ---------------- Banque ---------------- */
+function vBanque(){
+  const l = D.releve;
+  const st = {"LETTRÉ":"AUTONOME","EN VALIDATION":"VALIDATION","INCONNU":"HUMAIN","EN COURS":"RÈGLE","NOUVEAU":"RÈGLE"};
+  return `<div class="card"><div class="hd"><h3>Relevé du compte escrow</h3><span class="sub">${l.length} crédits importés · ${D.cfo.nb_auto} lettrés automatiquement par référence + montant</span></div><div class="bd scroll">
+  <table class="tbl"><thead><tr><th>Ligne</th><th>Date valeur</th><th>Donneur d'ordre</th><th>Libellé</th><th class="num-r">Montant</th><th>Méthode</th><th>Score</th><th>Échéance(s)</th><th>Statut</th></tr></thead><tbody>
+  ${l.map(r=>`<tr><td class="mono">${esc(r.ligne_id)}</td><td style="white-space:nowrap">${esc(dfr(r.date_valeur))}</td><td>${esc(r.donneur_ordre)}</td><td class="mono lib">${esc(r.libelle)}</td>
+  <td class="num-r">${aed(r.montant_aed,2)}</td><td class="muted">${esc(r.methode||"")}</td><td>${r.score!=null?Math.round(r.score*100)+" %":""}</td><td class="mono">${esc(r.echeance_id||"")}</td>
+  <td><span class="lvl ${st[r.statut]||"RÈGLE"}">${esc(r.statut)}</span></td></tr>`).join("") || `<tr><td colspan="9" class="empty">Aucun relevé importé. Lancez un cycle au 28 novembre 2026.</td></tr>`}
+  </tbody></table></div></div>`;
+}
+
+/* ---------------- Journal ---------------- */
+function vJournal(){
+  const l = D.journal.slice().reverse();
+  return `<div class="banner ${D.integre?"":"bad"}"><div class="ic">${D.integre?"✓":"!"}</div><div><b>${D.integre?"Chaîne de hash intègre":"Journal altéré à la ligne "+esc(D.altere)}</b>
+  <div class="muted">${D.journal_total} entrées. Chaque ligne contient l'empreinte de la précédente : modifier une ligne dans Excel casse la chaîne et se voit ici.</div></div></div>
+  <div class="card"><div class="bd scroll"><table class="tbl"><thead><tr><th>N°</th><th>Date</th><th>Acteur</th><th>Couche</th><th>Action</th><th>Objet</th><th>Détail</th><th>Niveau</th><th>Hash</th></tr></thead><tbody>
+  ${l.map(j=>`<tr><td class="mono">${j.n}</td><td style="white-space:nowrap">${esc(dfr(j.date_simulee))}</td><td>${esc(j.acteur)}</td><td class="muted">${esc(j.couche)}</td><td style="font-weight:600">${esc(j.action)}</td>
+  <td class="mono lib">${esc(j.objet)}</td><td style="min-width:260px;max-width:420px">${esc(j.detail)}</td><td>${j.niveau?lvl(j.niveau):""}</td><td class="mono">${esc(j.hash)}</td></tr>`).join("")}
+  </tbody></table></div></div>`;
+}
+
+/* ---------------- Grille ---------------- */
+function dots(n, c){ return `<span class="dots ${c||""}" title="${n}/5">${[1,2,3,4,5].map(i=>`<i class="${i<=n?"f":""}"></i>`).join("")}</span>`; }
+function vGrille(){
+  return `<div class="card"><div class="hd"><h3>Grille de décision</h3><span class="sub">hypothèse d'équipe, à tester en entretiens · modifiable dans l'onglet Grille_Decision</span></div>
+  <div class="bd"><div class="rule" style="margin:0 0 14px;border:0;padding:0">
+    <span>V1 &lt; 3 → <b>pas d'agent</b></span><span>C1 ≤ 1 → <b>règle</b></span><span>C2 = 5 et C4 = 5 → <b>humain</b></span><span>C2 ≥ 4 ou C4 ≥ 4 → <b>validation</b></span><span>C2 ≤ 2 → <b>autonome</b></span></div>
+  <div class="legend">V1 volume · V2 temps équipe · V3 cash et risque · C1 ambiguïté des données · C2 conséquence d'une erreur · C3 effort d'intégration · C4 jugement humain (notes de 1 à 5)</div>
+  <div class="scroll"><table class="tbl"><thead><tr><th style="min-width:280px">Tâche</th><th>Agent</th><th title="Volume">V1</th><th title="Temps de l'équipe">V2</th><th title="Cash / risque">V3</th><th title="Ambiguïté des données">C1</th><th title="Conséquence d'une erreur">C2</th><th title="Effort d'intégration">C3</th><th title="Jugement humain">C4</th><th>Niveau</th><th>Phase</th></tr></thead><tbody>
+  ${D.grille.map(g=>`<tr><td><b>${esc(g.tache_id)}</b> ${esc(g.tache)}<div class="muted">${esc(g.exemple)}</div></td><td class="muted" style="white-space:nowrap">${esc(g.agent)}</td>
+  <td>${dots(g.V1_volume)}</td><td>${dots(g.V2_temps)}</td><td>${dots(g.V3_cash_risque)}</td><td>${dots(g.C1_ambiguite,"c")}</td><td>${dots(g.C2_consequence,"c")}</td><td>${dots(g.C3_integration,"c")}</td><td>${dots(g.C4_jugement,"c")}</td>
+  <td>${lvl(g.niveau)}</td><td class="muted">${esc(g.phase)}</td></tr>`).join("")}</tbody></table></div></div></div>
+  <div class="card" style="margin-top:20px"><div class="hd"><h3>Pack pays · Dubaï</h3><span class="sub">les règles du pays sont des données, qu'un avocat local corrige</span></div><div class="bd">
+  <table class="tbl"><thead><tr><th>Règle</th><th>Valeur</th><th>Unité</th><th>Source</th><th>Statut</th></tr></thead><tbody>
+  ${D.pack.map(p=>`<tr><td class="mono">${esc(p.cle)}</td><td><b>${esc(p.valeur)}</b></td><td class="muted">${esc(p.unite)}</td><td>${esc(p.source)}</td><td><span class="lvl ${p.statut==="FAIT"?"AUTONOME":p.statut==="À VÉRIFIER"?"VALIDATION":"RÈGLE"}">${esc(p.statut)}</span></td></tr>`).join("")}
+  </tbody></table></div></div>`;
+}
+
+/* ---------------- Rendu ---------------- */
+const VUES = {vue:vVue, file:vFile, agents:vAgents, messages:vMessages, banque:vBanque, journal:vJournal, grille:vGrille};
+function render(){
+  const v = (location.hash||"#vue").slice(1) in VUES ? (location.hash||"#vue").slice(1) : "vue";
+  document.querySelectorAll("nav a").forEach(a=>a.classList.toggle("on", a.dataset.v===v));
+  document.querySelectorAll(".view").forEach(s=>s.classList.toggle("on", s.id==="v-"+v));
+  document.getElementById("titre").textContent = TITRES[v];
+  document.getElementById("eyebrow").textContent = EYEBROWS[v];
+  document.getElementById("v-"+v).innerHTML = VUES[v]();
+  document.getElementById("c-date").textContent = dfr(D.date);
+  document.getElementById("c-llm").textContent = D.llm;
+  const n = D.file.filter(x=>x.statut==="EN ATTENTE").length;
+  document.getElementById("nb-file").textContent = n || "";
+  const h = document.getElementById("motif-hero"); if(h) motif(h, 640, 320, 60, 120, 70);
+  bind();
+}
+function bind(){
+  document.querySelectorAll("[data-f]").forEach(b=>b.onclick=()=>{ filtreFile=b.dataset.f; render(); });
+  document.querySelectorAll("[data-ok]").forEach(b=>b.onclick=async()=>{ const id=b.dataset.ok, t=document.getElementById("br-"+id);
+    const j = await api("/api/decider",{file_id:id, approuve:true, brouillon: t && t.value!==t.defaultValue ? t.value : null}); if(j) toast(id+" approuvé et exécuté (shadow)."); });
+  document.querySelectorAll("[data-no]").forEach(b=>b.onclick=async()=>{ const c = prompt("Motif du rejet (journalisé) :","") ; if(c===null) return;
+    const j = await api("/api/decider",{file_id:b.dataset.no, approuve:false, commentaire:c}); if(j) toast(b.dataset.no+" rejeté."); });
+}
+document.getElementById("b-cycle").onclick = async()=>{ const d=document.getElementById("d-cycle").value; const j = await api("/api/cycle",{date:d||null}); if(j) toast("Cycle du "+dfr(j.date)+" terminé."); };
+document.getElementById("b-reset").onclick = async()=>{ if(!STATIQUE && !confirm("Recréer la base fictive ? Les décisions prises seront perdues.")) return; const j = await api("/api/reinitialiser"); if(j) toast("Base fictive recréée."); };
+document.getElementById("b-theme").onclick = ()=>{ const r=document.documentElement; const dark = r.dataset.theme ? r.dataset.theme==="dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+  r.dataset.theme = dark ? "light" : "dark"; try{ localStorage.setItem("halden-theme", r.dataset.theme); }catch(e){} };
+try{ const t = localStorage.getItem("halden-theme"); if(t) document.documentElement.dataset.theme = t; }catch(e){}
+if(STATIQUE){ document.getElementById("ctrl").style.display="none"; }
+window.addEventListener("hashchange", render);
+motif(document.getElementById("motif-side"), 300, 420, 46, 40, 40);
+(async()=>{ if(!D){ D = await (await fetch("/api/etat")).json(); } document.getElementById("d-cycle").value = D.date; render(); })();
+</script>
+</body>
+</html>

@@ -1,0 +1,4 @@
+openpyxl>=3.1
+# Optionnel, pour brancher Claude (HALDEN_LLM=claude ou bedrock) :
+# anthropic
+# pydantic
