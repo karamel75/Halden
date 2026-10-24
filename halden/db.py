@@ -165,11 +165,14 @@ class Database:
                 ws[f"{col}{r}"].fill = PatternFill("solid", fgColor=NUIT)
         start = 2
         if logo_png and Path(logo_png).exists():
-            img = XLImage(str(logo_png))
-            ratio = img.height / img.width
-            img.width, img.height = 420, int(420 * ratio)
-            ws.add_image(img, "B2")
-            start = 12
+            try:
+                img = XLImage(str(logo_png))   # nécessite Pillow ; sans lui, couverture sans logo
+                ratio = img.height / img.width
+                img.width, img.height = 420, int(420 * ratio)
+                ws.add_image(img, "B2")
+                start = 12
+            except ImportError:
+                pass
         for i, (txt, kind) in enumerate(LISEZ_MOI):
             cell = ws[f"B{start + i}"]
             cell.value = txt

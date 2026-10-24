@@ -146,7 +146,18 @@ class Handler(BaseHTTPRequestHandler):
 def servir(port: int = 8765, navigateur: bool = True) -> None:
     if not BASE.exists():
         seed.generer(BASE, ENTREES, LOGO_PNG)
-    srv = ThreadingHTTPServer(("127.0.0.1", port), Handler)
+    # Sous Windows, certains ports sont réservés (WinError 10013) : on essaie les suivants,
+    # puis on laisse le système choisir un port libre.
+    srv = None
+    for p in [port, *range(port + 1, port + 10), 8000, 8080, 5050, 0]:
+        try:
+            srv = ThreadingHTTPServer(("127.0.0.1", p), Handler)
+            break
+        except OSError:
+            continue
+    if srv is None:
+        raise SystemExit("Impossible d'ouvrir un port local pour la console.")
+    port = srv.server_address[1]
     url = f"http://localhost:{port}"
     print(f"Console Halden : {url}  (Ctrl+C pour arrêter)")
     if navigateur:
