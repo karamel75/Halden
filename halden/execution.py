@@ -35,8 +35,7 @@ def executer(db: Database, item: dict, today: dt.date, acteur: str) -> str:
         detail = f"{e['echeance_id']} appelée, limite {e['date_limite']}"
     elif action == "MESSAGE":
         _sortant(db, today, item, statut_msg)
-        if "relance" in payload:
-            r = payload["relance"]
+        for r in payload.get("relances", []) + ([payload["relance"]] if "relance" in payload else []):
             db.add("Relances", {"relance_id": db.next_id("Relances", "REL-"), "date": today,
                                 "echeance_id": r["echeance_id"], "acheteur_id": item.get("acheteur_id"),
                                 "niveau": r["niveau"], "jours_retard": r["retard"], "canal": item.get("canal"),
@@ -56,6 +55,24 @@ def executer(db: Database, item: dict, today: dt.date, acteur: str) -> str:
         ligne.update(statut="LETTRÉ", echeance_id=", ".join(payload["echeances"]))
         detail = f"{ligne['ligne_id']} lettrée sur {', '.join(payload['echeances'])}" + (
             f" · excédent {rules.fmt_aed(restant)} à traiter" if restant > 0 else "")
+    elif action == "ANNULER_LETTRAGE":
+        debit = db.get("Releve_Bancaire", ligne_id=payload["ligne_id"])
+        origine = db.get("Releve_Bancaire", ligne_id=payload["origine"]) if payload.get("origine") else None
+        defaites = []
+        if origine and origine["statut"] == "LETTRÉ":
+            restant = round(float(origine["montant_aed"]), 2)
+            for eid in [x.strip() for x in str(origine["echeance_id"] or "").split(",") if x.strip()]:
+                e = db.get("Echeancier", echeance_id=eid)
+                part = min(restant, float(e["montant_paye_aed"] or 0))
+                e["montant_paye_aed"] = round(float(e["montant_paye_aed"] or 0) - part, 2)
+                restant = round(restant - part, 2)
+                e["statut"] = "PARTIEL" if e["montant_paye_aed"] > 0 else (
+                    "EN RETARD" if e["date_limite"] and e["date_limite"] < today else "APPELÉ")
+                defaites.append(eid)
+            origine["statut"] = "REJETÉ"
+        debit.update(statut="TRAITÉ", echeance_id=", ".join(defaites))
+        detail = f"virement {origine['ligne_id'] if origine else '?'} rejeté · " + (
+            f"{', '.join(defaites)} redevenue(s) due(s)" if defaites else "aucun lettrage à défaire")
     elif action == "ORDRE_RESERVE":
         r = db.get("Reserves", reserve_id=payload["reserve_id"])
         st = db.get("Sous_Traitants", st_id=payload["st"])

@@ -40,14 +40,14 @@ class AgentVentes(Agent):
                 continue
             if score >= 60 and unite:
                 lead["statut"] = "QUALIFIÉ"
-                objet, texte = ctx.llm.rediger("suivi_lead", "EN", {
+                objet, texte, meta = ctx.rediger("suivi_lead", "EN", {
                     "nom": lead["nom"], "projet": projet["nom"], "unite": unite["unite_id"], "type": unite["type"],
                     "surface": unite["surface_sqft"], "prix": rules.fmt_aed(unite["prix_aed"]),
                     "promoteur": projet["promoteur"]})
                 out.append(self.p(tache_id="T09", action="MESSAGE", canal="whatsapp", objet=objet, brouillon=texte,
                                   montants_regles=[unite["prix_aed"]], unite_id=unite["unite_id"],
                                   resume=f"Lead {lead['nom']} (score {score}) → proposer {unite['unite_id']}",
-                                  payload={"lead_id": lead["lead_id"]}, cle=f"LEAD:{lead['lead_id']}"))
+                                  payload={"lead_id": lead["lead_id"]}, cle=f"LEAD:{lead['lead_id']}", **meta))
             else:
                 lead["statut"] = "À NOURRIR"
                 ctx.log(self.nom, "LEAD_SCORÉ", lead["lead_id"],

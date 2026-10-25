@@ -26,14 +26,14 @@ class AgentContrat(Agent):
             a, u = ctx.acheteur(c["acheteur_id"]), ctx.unite(c["unite_id"])
             projet = ctx.ctx_projet(u["projet_id"])
             if c["spa_statut"] == "ENVOYÉ" and (ctx.today - c["date_reservation"]).days > d_spa:
-                objet, texte = ctx.llm.rediger("relance_spa", a["langue"], {
+                objet, texte, meta = ctx.rediger("relance_spa", a["langue"], {
                     "nom": a["nom"], "unite": u["unite_id"], "date": c["date_reservation"],
                     "promoteur": projet["promoteur"]})
                 out.append(self.p(tache_id="T17", action="MESSAGE", acheteur_id=a["acheteur_id"],
                                   unite_id=u["unite_id"], canal=a["canal"], langue=a["langue"], objet=objet,
                                   brouillon=texte, engage_promoteur=True,
                                   resume=f"SPA non signé depuis {(ctx.today - c['date_reservation']).days} j · {a['nom']}",
-                                  cle=f"SPA:{c['contrat_id']}"))
+                                  cle=f"SPA:{c['contrat_id']}", **meta))
             if (c["spa_statut"] == "SIGNÉ" and c["oqood_statut"] == "EN ATTENTE" and c["date_spa"]
                     and (ctx.today - c["date_spa"]).days > d_oqood):
                 frais = rules.montant_echeance(u["prix_aed"], float(db.pack("frais_oqood_pct", 4)))
@@ -47,11 +47,11 @@ class AgentContrat(Agent):
                                   cle=f"OQOOD:{c['contrat_id']}"))
             manquantes = [lib for k, lib in PIECES.items() if str(a.get(k) or "").upper() != "OK"]
             if manquantes:
-                objet, texte = ctx.llm.rediger("demande_kyc", a["langue"], {
+                objet, texte, meta = ctx.rediger("demande_kyc", a["langue"], {
                     "nom": a["nom"], "unite": u["unite_id"], "pieces": ", ".join(manquantes),
                     "promoteur": projet["promoteur"]})
                 out.append(self.p(tache_id="T16", action="MESSAGE", acheteur_id=a["acheteur_id"],
                                   unite_id=u["unite_id"], canal=a["canal"], langue=a["langue"], objet=objet,
                                   brouillon=texte, resume=f"Pièces KYC manquantes · {a['nom']} : {', '.join(manquantes)}",
-                                  cle=f"KYC:{a['acheteur_id']}:{len(manquantes)}"))
+                                  cle=f"KYC:{a['acheteur_id']}:{len(manquantes)}", **meta))
         return out

@@ -23,25 +23,26 @@ SCHEMA: dict[str, list[str]] = {
     "Pack_Pays": ["cle", "valeur", "unite", "source", "statut"],
     "Grille_Decision": ["tache_id", "tache", "agent", "V1_volume", "V2_temps", "V3_cash_risque",
                         "C1_ambiguite", "C2_consequence", "C3_integration", "C4_jugement",
-                        "niveau", "phase", "exemple"],
+                        "niveau", "phase", "exemple", "sensibilite"],
     "Projets": ["projet_id", "nom", "promoteur", "localisation", "statut", "avancement_pct",
                 "date_lancement", "date_livraison", "compte_escrow", "banque_escrow"],
     "Jalons": ["jalon_id", "projet_id", "libelle", "seuil_pct", "date_certificat", "certificat_ref", "statut"],
     "Unites": ["unite_id", "projet_id", "etage", "type", "surface_sqft", "prix_aed", "statut",
                "acheteur_id", "date_reservation", "date_livraison"],
     "Acheteurs": ["acheteur_id", "nom", "nationalite", "langue", "canal", "email", "telephone",
-                  "kyc_passeport", "kyc_emirates_id", "kyc_justif_adresse"],
+                  "kyc_passeport", "kyc_emirates_id", "kyc_justif_adresse", "contact_auto"],
     "Contrats": ["contrat_id", "unite_id", "acheteur_id", "date_reservation", "spa_statut",
                  "date_spa", "oqood_statut", "date_oqood"],
     "Echeancier": ["echeance_id", "projet_id", "unite_id", "acheteur_id", "num", "libelle", "declencheur",
                    "pourcentage", "montant_aed", "date_appel", "date_limite", "montant_paye_aed",
                    "statut", "reference"],
     "Releve_Bancaire": ["ligne_id", "date_valeur", "montant_aed", "libelle", "donneur_ordre",
-                        "fichier_source", "statut", "echeance_id", "score", "methode"],
+                        "fichier_source", "statut", "echeance_id", "score", "methode", "sens",
+                        "acheteur_candidat", "empreinte"],
     "Relances": ["relance_id", "date", "echeance_id", "acheteur_id", "niveau", "jours_retard",
                  "canal", "statut"],
-    "Messages_Entrants": ["msg_id", "date", "acheteur_id", "canal", "texte", "statut",
-                          "categorie", "langue_detectee"],
+    "Messages_Entrants": ["msg_id", "date", "acheteur_id", "canal", "expediteur", "texte", "statut",
+                          "categorie", "langue_detectee", "signaux"],
     "Messages_Sortants": ["sortant_id", "date", "acheteur_id", "canal", "langue", "objet", "texte",
                           "agent", "statut", "cle"],
     "Leads": ["lead_id", "date", "nom", "source", "nationalite", "budget_aed", "recherche",
@@ -72,16 +73,17 @@ LISEZ_MOI = [
     ("", ""),
     ("Vous pouvez modifier les onglets à la main puis relancer un cycle :", "h"),
     ("• Messages_Entrants : ajoutez une ligne avec statut NOUVEAU → l'agent Relation acquéreurs la traite.", ""),
-    ("• Jalons : passez un jalon en CERTIFIÉ avec une date → l'agent Collections prépare les appels de fonds.", ""),
-    ("• Grille_Decision : changez les notes V/C → le niveau d'autonomie de l'agent change au prochain cycle.", ""),
+    ("• Jalons : passez un jalon en CERTIFIÉ avec une date → l'agent Encaissements prépare les appels de fonds.", ""),
+    ("• Grille_Decision : changez les notes V/C → le niveau change, sans jamais passer sous le plancher du code.", ""),
     ("• Pack_Pays : délais de relance, garanties… (règles du pays, à faire valider par un avocat).", ""),
     ("", ""),
     ("Onglets de sortie (écrits par les agents) :", "h"),
     ("• File_Approbation : tout ce qui attend une décision humaine (statut EN ATTENTE).", ""),
     ("• Messages_Sortants : messages préparés. En mode shadow, rien n'est envoyé.", ""),
-    ("• Journal_Audit : chaque action, chaînée par hash (toute modification a posteriori se voit).", ""),
+    ("• Journal_Audit : chaque action, chaînée et signée (HMAC) : toute modification ou coupure se voit.", ""),
     ("", ""),
     ("Règle d'or : l'IA prépare, les règles calculent, un humain engage le promoteur. Jamais de mouvement d'argent.", "h"),
+    ("Règle du pilote : chaque message vers un acheteur est validé par un humain (écrite dans le code).", "h"),
 ]
 
 
@@ -153,6 +155,8 @@ class Database:
                 ws.auto_filter.ref = ws.dimensions
         self.path.parent.mkdir(parents=True, exist_ok=True)
         wb.save(self.path)
+        from . import audit
+        audit.ancrer(self)
 
     def _write_cover(self, wb: Workbook, logo_png: Path | None) -> None:
         ws = wb.create_sheet("Lisez_moi")

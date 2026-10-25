@@ -38,24 +38,24 @@ NOMS = [
 ]
 
 GRILLE = [  # tache_id, tache, agent, V1 V2 V3 C1 C2 C3 C4, exemple
-    ("T01", "Relances d'échéances J+3 / J+10", "Collections", 5, 4, 4, 2, 2, 1, 1, "Rappel courtois 3 jours après l'échéance"),
+    ("T01", "Relances d'échéances J+3 / J+10", "Encaissements", 5, 4, 4, 2, 4, 1, 1, "Rappel courtois 3 jours après l'échéance"),
     ("T02", "Vue CFO du matin", "Orchestrateur", 5, 4, 4, 2, 1, 1, 1, "Encaissé, en retard, file d'attente"),
     ("T03", "Tri et affectation des réserves", "Livraison & réserves", 4, 3, 2, 2, 2, 1, 2, "Fuite sous évier → plombier, 48 h"),
-    ("T04", "Réponses FAQ acquéreurs", "Relation acquéreurs", 4, 4, 2, 3, 2, 2, 2, "« Quand est ma prochaine échéance ? »"),
-    ("T05", "Rédaction des appels de fonds", "Collections", 4, 4, 5, 2, 4, 1, 3, "Jalon 40 % certifié → 20 appels"),
-    ("T06", "Rapprochement bancaire (cas ambigus)", "Collections", 5, 5, 5, 4, 4, 2, 3, "Virement sans référence"),
+    ("T04", "Réponses FAQ acquéreurs", "Relation acquéreurs", 4, 4, 2, 3, 4, 2, 2, "« Quand est ma prochaine échéance ? »"),
+    ("T05", "Rédaction des appels de fonds", "Encaissements", 4, 4, 5, 2, 4, 1, 3, "Jalon 40 % certifié → 20 appels"),
+    ("T06", "Rapprochement bancaire (cas ambigus)", "Encaissements", 5, 5, 5, 4, 4, 2, 3, "Virement sans référence"),
     ("T07", "Actualités chantier mensuelles", "Relation acquéreurs", 3, 3, 2, 2, 3, 2, 3, "Lettre d'avancement avec photos"),
     ("T08", "Demandes de modification", "Relation acquéreurs", 3, 3, 3, 3, 4, 2, 4, "Changer la finition de la cuisine"),
     ("T09", "Suivi des leads", "Ventes", 4, 3, 4, 3, 3, 3, 3, "Proposer le lot adapté au budget"),
     ("T10", "Calcul des échéances", "Moteur de règles", 5, 4, 5, 1, 5, 1, 1, "10 % du prix au jalon 40 %"),
     ("T11", "Garantie applicable", "Garantie", 3, 3, 3, 1, 4, 1, 2, "Finitions 12 mois, structure 10 ans"),
-    ("T12", "Plan pour acquéreur en difficulté", "Collections", 3, 3, 5, 4, 5, 1, 5, "Report demandé après perte d'emploi"),
+    ("T12", "Plan pour acquéreur en difficulté", "Encaissements", 3, 3, 5, 4, 5, 1, 5, "Report demandé après perte d'emploi"),
     ("T13", "Contrat, SPA, réservation, annulation", "Contrat", 4, 3, 5, 3, 5, 2, 5, "Signature, résiliation, remboursement"),
     ("T14", "Responsabilité et litige", "Garantie", 3, 2, 5, 4, 5, 1, 5, "Fissure + menace d'avocat"),
-    ("T15", "Lettrage exact (référence + montant)", "Collections", 5, 5, 4, 1, 3, 1, 1, "HLD-ACR-0304-04 = montant dû"),
-    ("T16", "Collecte des pièces KYC", "Contrat", 4, 3, 2, 2, 2, 2, 1, "Demander la copie du passeport"),
+    ("T15", "Lettrage exact (référence + payeur + montant)", "Encaissements", 5, 5, 4, 1, 3, 1, 1, "HLD-ACR-0304-04 = montant dû"),
+    ("T16", "Collecte des pièces KYC", "Contrat", 4, 3, 2, 2, 3, 2, 1, "Demander la copie du passeport"),
     ("T17", "Suivi SPA et Oqood", "Contrat", 4, 3, 4, 2, 4, 2, 3, "SPA non signé après 30 jours"),
-    ("T18", "Réponse garantie à l'acquéreur", "Garantie", 3, 2, 2, 2, 2, 1, 1, "Accusé + intervention planifiée"),
+    ("T18", "Réponse garantie à l'acquéreur", "Garantie", 3, 2, 2, 2, 3, 1, 1, "Accusé + intervention planifiée"),
 ]
 
 PACK = [
@@ -65,6 +65,12 @@ PACK = [
     ("relance_niveau_1_jours", 3, "jours", "Choix Halden (pilote)", "HYPOTHÈSE"),
     ("relance_niveau_2_jours", 10, "jours", "Choix Halden (pilote)", "HYPOTHÈSE"),
     ("escalade_jours", 30, "jours", "Choix Halden ; procédure légale selon loi 13/2008 et SPA", "À VÉRIFIER"),
+    ("tolerance_frais_bancaires_aed", 100, "AED", "Choix Halden : écart toléré pour frais bancaires (toujours validé)", "HYPOTHÈSE"),
+    ("defaut_notification_dld", "Le promoteur notifie le défaut à la DLD, qui notifie l'acheteur (loi de Dubaï n° 13/2008, art. 11, modifiée par la loi n° 19/2017)", "", "Loi 13/2008 art. 11 ; Al Tamimi", "À VÉRIFIER"),
+    ("defaut_delai_dld_jours", 30, "jours", "Loi 13/2008 art. 11 modifiée", "À VÉRIFIER"),
+    ("defaut_option_80_plus", "maintenir le contrat et réclamer le solde, ou demander la vente du lot aux enchères via la DLD, ou résilier en conservant au plus 40 % du prix", "", "Loi 19/2017", "À VÉRIFIER"),
+    ("defaut_option_60_80", "résilier en conservant au plus 40 % du prix", "", "Loi 19/2017", "À VÉRIFIER"),
+    ("defaut_option_moins_60", "résilier en conservant au plus 25 % du prix", "", "Loi 19/2017", "À VÉRIFIER"),
     ("delai_signature_spa_jours", 30, "jours", "Pratique de marché", "À VÉRIFIER"),
     ("delai_enregistrement_oqood_jours", 30, "jours", "DLD / Oqood", "À VÉRIFIER"),
     ("frais_oqood_pct", 4, "% du prix", "DLD (frais de transfert)", "À VÉRIFIER"),
@@ -93,6 +99,10 @@ def generer(path: Path | str, entrees: Path | str, logo: Path | None = None) -> 
         {"cle": "llm_mode", "valeur": "simule", "description": "simule | claude (API Anthropic) | bedrock (AWS me-central-1)"},
         {"cle": "approbateur", "valeur": "Sara K. · CFO", "description": "Personne fictive qui valide dans la démo"},
         {"cle": "promoteur", "valeur": PROMOTEUR, "description": "Promoteur fictif"},
+        {"cle": "perimetre", "valeur": "PILOTE", "description": "PILOTE = encaissements seuls (Dubaï) | VISION = les six agents"},
+        {"cle": "approbateurs_autorises", "valeur": "Sara K. · CFO", "description": "Seules ces personnes peuvent décider (séparées par ;). Connexion réelle à prévoir avant le pilote"},
+        {"cle": "regle_approbation", "valeur": "Chaque message vers un acheteur est validé par un humain",
+         "description": "Écrite dans le code (garde-fous), affichée ici pour mémoire : non modifiable dans l'Excel"},
     ])
     db.add_many("Pack_Pays", [dict(zip(["cle", "valeur", "unite", "source", "statut"], r)) for r in PACK])
     for t in GRILLE:
@@ -101,7 +111,7 @@ def generer(path: Path | str, entrees: Path | str, logo: Path | None = None) -> 
             "tache_id": t[0], "tache": t[1], "agent": t[2], "V1_volume": s[0], "V2_temps": s[1],
             "V3_cash_risque": s[2], "C1_ambiguite": s[3], "C2_consequence": s[4], "C3_integration": s[5],
             "C4_jugement": s[6], "niveau": rules.niveau_grille(*s), "phase": rules.phase_grille(s[5]),
-            "exemple": t[10]})
+            "exemple": t[10], "sensibilite": rules.sensibilite(list(s))})
 
     db.add_many("Projets", [
         {"projet_id": "ACR", "nom": "Azure Crest Residences", "promoteur": PROMOTEUR, "localisation":
@@ -139,7 +149,8 @@ def generer(path: Path | str, entrees: Path | str, logo: Path | None = None) -> 
         slug = nom.lower().replace(" ", ".").replace("'", "")
         db.add("Acheteurs", {"acheteur_id": f"ACH-{i:03d}", "nom": nom, "nationalite": nat, "langue": langue,
                              "canal": canal, "email": f"{slug}@mail.example", "telephone": f"+971 50 {RNG.randint(100, 999)} {RNG.randint(1000, 9999)}",
-                             "kyc_passeport": "OK", "kyc_emirates_id": "OK", "kyc_justif_adresse": "OK"})
+                             "kyc_passeport": "OK", "kyc_emirates_id": "OK", "kyc_justif_adresse": "OK",
+                             "contact_auto": "ACTIF"})
     for aid, champ in (("ACH-018", "kyc_justif_adresse"), ("ACH-019", "kyc_emirates_id"), ("ACH-019", "kyc_justif_adresse")):
         db.get("Acheteurs", acheteur_id=aid)[champ] = "MANQUANT"
 
@@ -257,10 +268,18 @@ def generer(path: Path | str, entrees: Path | str, logo: Path | None = None) -> 
         ("ACH-016", "email", "I want to cancel my purchase and get a refund of everything I paid. Please process it."),
         ("ACH-006", "email", "Bonjour, pouvez-vous m'envoyer mon relevé de compte (statement) à jour ? Merci."),
         ("ACH-010", "email", "Any construction update? Last photos were from September."),
+        # Cas relevés par la revue du 24 octobre : chacun doit arrêter les relances ou bloquer la réponse.
+        ("ACH-007", "whatsapp", "دفعت القسط أمس، لماذا التذكير؟"),
+        ("ACH-011", "email", "What is my balance?"),
+        ("ACH-004", "whatsapp", "Please cancel the reminders, I'm talking to my lawyer."),
+        ("ACH-001", "whatsapp", "Hi, I'm Omar's assistant, send me his statement please.", "+971 55 000 1122"),
     ]
-    for i, (aid, canal, txt) in enumerate(msgs, start=1):
+    for i, m in enumerate(msgs, start=1):
+        aid, canal, txt = m[:3]
+        a = db.get("Acheteurs", acheteur_id=aid)
+        exp = m[3] if len(m) > 3 else (a["email"] if canal == "email" else a["telephone"])
         db.add("Messages_Entrants", {"msg_id": f"MSG-{i:04d}", "date": D(2026, 11, 1), "acheteur_id": aid,
-                                     "canal": canal, "texte": txt, "statut": "NOUVEAU"})
+                                     "canal": canal, "expediteur": exp, "texte": txt, "statut": "NOUVEAU"})
     leads = [
         ("Rania Farouk", "Bayut", "Égypte", 840_000, "Studio", D(2026, 10, 30), 4, "NOUVEAU"),
         ("Tom Hendricks", "Site web", "Pays-Bas", 2_000_000, "2 chambres", D(2026, 10, 28), 3, "NOUVEAU"),
@@ -325,6 +344,9 @@ def ecrire_releve(db: Database, dossier: Path) -> Path:
     n18 = ach["ACH-018"]["nom"].split()
     lignes.append((D(2026, 11, 20), "TT FROM ABROAD", f"{n18[-1].upper()} {n18[0].upper()}", round(sum(e["montant_aed"] for e in cumul), 2)))
     lignes.append((D(2026, 11, 26), "INWARD TT", "ALPHA HORIZON TRADING FZE", 47_250.00))
+    # La bonne référence et le bon montant, mais pas le bon payeur : jamais lettré automatiquement.
+    autre = j40[15]
+    lignes.append((D(2026, 11, 27), f"TRF/{autre['reference']}", "AL HASHIMI OMAR", autre["montant_aed"]))
     lignes.sort(key=lambda x: x[0])
     f = dossier / "releve_escrow_2026-11-28.csv"
     with f.open("w", encoding="utf-8", newline="") as fh:
@@ -333,4 +355,8 @@ def ecrire_releve(db: Database, dossier: Path) -> Path:
         for d, lib, don, m in lignes:
             w.writerow([d.isoformat(), lib, don, f"{m:.2f}", ""])
         w.writerow(["2026-11-28", "ACCOUNT MAINTENANCE FEE", "BANK", "", "105.00"])
+        # Un virement revient rejeté : l'échéance qu'il avait soldée doit redevenir due.
+        rejet = payeurs_exacts[10]
+        w.writerow(["2026-11-28", f"RETURNED TRF {rejet['reference']} BENEFICIARY BANK REJECT",
+                    ach[rejet["acheteur_id"]]["nom"].upper(), "", f"{rejet['montant_aed']:.2f}"])
     return f

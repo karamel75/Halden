@@ -4,3 +4,5 @@ __pycache__/
 sorties/
 ~$*.xlsx
 .DS_Store
+donnees/.cle_audit
+donnees/.ancre_audit*

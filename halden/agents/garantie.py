@@ -40,12 +40,12 @@ class AgentGarantie(Agent):
                                             f"{garantie} ({'couverte' if couverte else 'hors délai'}). "
                                             f"Expertise et position juridique à décider par l'équipe.", **base))
             elif couverte:
-                objet, texte = ctx.llm.rediger("accuse_garantie", a["langue"], f)
+                objet, texte, meta = ctx.rediger("accuse_garantie", a["langue"], f)
                 out.append(self.p(tache_id="T18", action="MESSAGE", canal=a["canal"], langue=a["langue"], objet=objet,
-                                  brouillon=texte, resume=f"Garantie couverte · {a['nom']} · {cat} → {st['nom']}", **base))
+                                  brouillon=texte, resume=f"Garantie couverte · {a['nom']} · {cat} → {st['nom']}", **base, **meta))
             else:
-                objet, texte = ctx.llm.rediger("refus_garantie", a["langue"], f)
+                objet, texte, meta = ctx.rediger("refus_garantie", a["langue"], f)
                 out.append(self.p(tache_id="T18", action="MESSAGE", canal=a["canal"], langue=a["langue"], objet=objet,
                                   brouillon=texte, engage_promoteur=True,
-                                  resume=f"Hors garantie · {a['nom']} · {cat} : réponse à valider", **base))
+                                  resume=f"Hors garantie · {a['nom']} · {cat} : réponse à valider", **base, **meta))
         return out

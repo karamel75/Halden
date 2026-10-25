@@ -27,7 +27,7 @@ class AgentLivraison(Agent):
             st = next((s for s in db.rows("Sous_Traitants") if s["specialite"] == SPECIALITE[cat]), None)
             sla = ctx.today + dt.timedelta(days=rules.SLA_JOURS[grav])
             r.update(categorie=cat, gravite=grav)
-            objet, texte = ctx.llm.rediger("ordre_reserve", "FR", {
+            objet, texte, meta = ctx.rediger("ordre_reserve", "FR", {
                 "ref": r["reserve_id"], "unite": r["unite_id"], "sous_traitant": st["nom"] if st else "?",
                 "description": r["description"], "localisation": r["localisation"], "gravite": grav, "sla": sla})
             out.append(self.p(tache_id="T03", action="ORDRE_RESERVE", unite_id=r["unite_id"], canal="email",
@@ -35,7 +35,7 @@ class AgentLivraison(Agent):
                               resume=f"Réserve {r['reserve_id']} ({cat}, {grav}) → {st['nom'] if st else '?'} avant le {sla}",
                               payload={"reserve_id": r["reserve_id"], "st": st["st_id"] if st else None,
                                        "sla": sla.isoformat()},
-                              cle=f"RESERVE:{r['reserve_id']}"))
+                              cle=f"RESERVE:{r['reserve_id']}", **meta))
         for u in db.where("Unites", statut="PRÊTE · SOLDE DÛ"):
             du = sum(rules.reste_du(e) for e in db.where("Echeancier", unite_id=u["unite_id"]) if e["statut"] != "PAYÉ")
             cle = f"BLOCAGE:{u['unite_id']}:{du:.0f}"

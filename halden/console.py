@@ -14,7 +14,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from . import BASE, ENTREES, LOGO_PNG, RACINE, SORTIES, approvals, audit, cfo, historique, seed
-from .agents import AGENTS
+from .agents import AGENTS, agents_actifs
 from .db import Database
 from .llm import LLM
 from .orchestrator import cycle
@@ -44,10 +44,12 @@ def etat(db: Database) -> dict:
     file = db.rows("File_Approbation")
     sortants = db.rows("Messages_Sortants")
     agents = []
+    actifs = {a.nom for a in agents_actifs(db)}
     for a in AGENTS:
         dern = [f for f in file if f["agent"] == a.nom][-4:]
         auto = [m for m in sortants if m["agent"] == a.nom][-4:]
-        agents.append({"nom": a.nom, "etape": a.etape, "mission": a.mission, "stats": dict(stats[a.nom]),
+        mission = a.mission if a.nom in actifs else f"Vision · hors du pilote. {a.mission}"
+        agents.append({"nom": a.nom, "etape": a.etape, "mission": mission, "stats": dict(stats[a.nom]),
                        "derniers": [f["resume"] for f in dern] + [m["objet"] or "" for m in auto]})
     ok, n = audit.verifier(db)
     journal = db.rows("Journal_Audit")

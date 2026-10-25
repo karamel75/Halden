@@ -7,7 +7,7 @@ from typing import Any
 
 @dataclass
 class Proposition:
-    agent: str                      # ex. "Collections"
+    agent: str                      # ex. "Encaissements"
     tache_id: str                   # renvoie à la Grille_Decision
     action: str                     # APPEL_DE_FONDS, MESSAGE, LETTRAGE, ESCALADE, ...
     resume: str                     # une phrase lisible par le CFO
@@ -22,6 +22,8 @@ class Proposition:
     payload: dict[str, Any] = field(default_factory=dict)
     montant: float | None = None    # montant affiché au CFO (sinon le premier des montants_regles)
     cle: str = ""                   # clé de dédoublonnage (une même proposition n'est pas refaite)
+    faits: dict[str, Any] = field(default_factory=dict)  # faits calculés par les règles, seule source autorisée
+    modele_texte: str = ""          # texte fixe du modèle de message (sans les champs variables)
     # Rempli par les garde-fous :
     niveau: str = ""
     raisons: list[str] = field(default_factory=list)

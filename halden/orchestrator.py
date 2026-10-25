@@ -7,8 +7,8 @@ import datetime as dt
 import json
 from dataclasses import dataclass, field
 
-from . import audit, guardrails, ingestion, rules
-from .agents import AGENTS
+from . import audit, guardrails, ingestion, rules, signaux
+from .agents import AGENTS, agents_actifs
 from .agents.base import Contexte
 from .db import Database
 from .execution import executer
@@ -31,8 +31,9 @@ def detecter(db: Database, today: dt.date) -> list[dict]:
         if j["date_certificat"] and j["date_certificat"] <= today:
             ev.append({"type": "JALON_CERTIFIE", "jalon": j, "label": f"Certificat {j['certificat_ref']} · {j['libelle']}"})
     for ligne in db.where("Releve_Bancaire", statut="NOUVEAU"):
+        sens = "Débit" if ligne.get("sens") == "DÉBIT" else "Virement"
         ev.append({"type": "LIGNE_BANCAIRE", "ligne": ligne,
-                   "label": f"Virement {rules.fmt_aed(float(ligne['montant_aed']))} · {ligne['donneur_ordre']}"})
+                   "label": f"{sens} {rules.fmt_aed(float(ligne['montant_aed']))} · {ligne['donneur_ordre']}"})
     n = len(db.where("Messages_Entrants", statut="NOUVEAU"))
     if n:
         ev.append({"type": "MESSAGES", "label": f"{n} message(s) d'acquéreurs"})
@@ -55,11 +56,41 @@ def cycle(db: Database, today: dt.date, llm: LLM | None = None, entrees_dir=None
         audit.log(db, today, "Orchestrateur", "Orchestrateur", f"ÉVÉNEMENT · {ev['type']}", "", ev["label"])
 
     ctx = Contexte(db=db, today=today, llm=llm, evenements=bilan.evenements)
-    for agent in AGENTS:
-        stats = {"propositions": 0, "AUTONOME": 0, "RÈGLE": 0, "VALIDATION": 0, "HUMAIN": 0, "BLOQUÉ": 0}
-        for p in agent.executer(ctx):
-            if ctx.deja_fait(p.cle):
+    # Signaux d'abord : un acheteur qui écrit « j'ai payé » ou « avocat » ne reçoit plus rien d'automatique.
+    for m in db.where("Messages_Entrants", statut="NOUVEAU"):
+        sig = signaux.detecter(m["texte"])
+        if sig:
+            m["signaux"] = ", ".join(sig)
+            ctx.suspendus[m["acheteur_id"]] = f"signal {m['signaux']} ({m['msg_id']})"
+            signaux.suspendre(db, today, m["acheteur_id"], m["signaux"])
+            audit.log(db, today, "Orchestrateur", "Garde-fous", "CONTACT_AUTO_SUSPENDU", m["acheteur_id"],
+                      f"Signal {m['signaux']} dans {m['msg_id']}", rules.HUMAIN)
+
+    actifs = agents_actifs(db)
+    par_agent: dict[str, list[Proposition]] = {}
+    for agent in actifs:
+        par_agent[agent.nom] = [p for p in agent.executer(ctx) if not ctx.deja_fait(p.cle)]
+
+    # Une seule conversation par acheteur : si un dossier part chez un humain, aucune relance ne part.
+    # Et si l'acheteur vient d'écrire, la réponse passe avant la relance (qui attend le cycle suivant).
+    escalades = {p.acheteur_id for ps in par_agent.values() for p in ps if p.action == "ESCALADE" and p.acheteur_id}
+    reponses = {p.acheteur_id for ps in par_agent.values() for p in ps
+                if p.action == "MESSAGE" and p.cle.startswith(("REPONSE:", "ATTENTE:"))}
+    for nom, ps in par_agent.items():
+        garder = []
+        for p in ps:
+            if "relances" in p.payload and p.acheteur_id in escalades | reponses:
+                pourquoi = ("un dossier de cet acheteur part chez un humain" if p.acheteur_id in escalades
+                            else "une réponse à son message est en préparation")
+                audit.log(db, today, nom, "Orchestrateur", "RELANCE_RETIRÉE", p.acheteur_id,
+                          f"{p.resume} · {pourquoi} dans ce cycle", rules.REGLE)
                 continue
+            garder.append(p)
+        par_agent[nom] = garder
+
+    for agent in actifs:
+        stats = {"propositions": 0, "AUTONOME": 0, "RÈGLE": 0, "VALIDATION": 0, "HUMAIN": 0, "BLOQUÉ": 0}
+        for p in par_agent[agent.nom]:
             guardrails.evaluer(db, p)
             stats["propositions"] += 1
             stats[p.niveau] = stats.get(p.niveau, 0) + 1
@@ -72,8 +103,13 @@ def cycle(db: Database, today: dt.date, llm: LLM | None = None, entrees_dir=None
             ev["jalon"]["statut"] = "TRAITÉ"
             projet = db.get("Projets", projet_id=ev["jalon"]["projet_id"])
             projet["avancement_pct"] = max(projet["avancement_pct"] or 0, ev["jalon"]["seuil_pct"])
-    if llm.erreurs:
-        audit.log(db, today, "Orchestrateur", "IA", "REPLI_MODE_SIMULÉ", "", f"{llm.erreurs} appel(s) IA en échec")
+    for e in llm.journal:      # chaque repli est journalisé, pas seulement le premier
+        audit.log(db, today, "Orchestrateur", "IA", "REPLI_MODE_SIMULÉ", "", e)
+    llm.journal.clear()
+    if llm.usage["appels"]:
+        audit.log(db, today, "Orchestrateur", "IA", "CONSOMMATION_IA", llm.model,
+                  f"{llm.usage['appels']} appels · {llm.usage['entree']} tokens entrée · {llm.usage['sortie']} sortie "
+                  f"· ≈ USD {llm.cout_usd():.4f} (prix API publics)")
     audit.log(db, today, "Orchestrateur", "Orchestrateur", "FIN_CYCLE", today.isoformat(),
               f"{len(bilan.propositions)} propositions")
     return bilan
@@ -85,7 +121,10 @@ def _ligne_file(db: Database, p: Proposition, today: dt.date, statut: str) -> di
         "niveau": p.niveau, "acheteur_id": p.acheteur_id, "unite_id": p.unite_id, "resume": p.resume,
         "brouillon": p.brouillon, "montant_aed": p.montant if p.montant is not None else (p.montants_regles[0] if p.montants_regles else None),
         "raisons": " ".join(p.raisons), "statut": statut, "action": p.action,
-        "payload": json.dumps({**p.payload, "canal": p.canal, "langue": p.langue, "objet": p.objet}, ensure_ascii=False),
+        "payload": json.dumps({**p.payload, "canal": p.canal, "langue": p.langue, "objet": p.objet,
+                               "controle": {"faits": p.faits, "montants": p.montants_regles,
+                                            "modele_texte": p.modele_texte}},
+                              ensure_ascii=False, default=str),
         "cle": p.cle})
 
 

@@ -63,18 +63,22 @@ class TestScenario(Base):
         self.assertTrue(all(p.niveau == rules.VALIDATION for p in appels))
         for f in approvals.en_attente(self.db):
             if f["action"] == "APPEL_DE_FONDS":
-                approvals.decider(self.db, f["file_id"], True, "CFO", dt.date(2026, 11, 2))
+                approvals.decider(self.db, f["file_id"], True, "Sara K. · CFO", dt.date(2026, 11, 2))
         self.assertEqual(len(self.db.where("Echeancier", declencheur="JALON:ACR-J40", statut="APPELÉ")), 20)
 
         cycle(self.db, dt.date(2026, 11, 28), llm, self.entrees)
         lignes = self.db.rows("Releve_Bancaire")
-        self.assertEqual(len(lignes), 18)
+        self.assertEqual(len(lignes), 21)                       # 19 crédits + 2 débits
         self.assertEqual(len([l for l in lignes if l["methode"] == "REF_EXACTE"]), 14)
+        self.assertEqual(len([l for l in lignes if l["methode"] == "REF_AUTRE_PAYEUR"]), 1)
         self.assertEqual(len([l for l in lignes if l["methode"] == "INCONNU"]), 1)
 
-        cycle(self.db, dt.date(2026, 12, 5), llm, self.entrees)
+        b3 = cycle(self.db, dt.date(2026, 12, 5), llm, self.entrees)
         self.assertTrue(all(m["statut"].startswith("SHADOW") for m in self.db.rows("Messages_Sortants")))
-        self.assertEqual(len(self.db.where("File_Approbation", statut="BLOQUÉ")), 1)
+        self.assertEqual(len(self.db.where("File_Approbation", statut="BLOQUÉ")), 2)   # deux remboursements
+        # Règle du pilote : aucun message vers un acheteur sans validation humaine.
+        for b in (b1, b3):
+            self.assertFalse([p for p in b.propositions if p.canal and p.niveau in (rules.AUTONOME, rules.REGLE)])
 
         self.db.save()
         db2 = Database.load(self.base)
