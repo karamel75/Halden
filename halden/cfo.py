@@ -16,9 +16,9 @@ def vue(db: Database, today: dt.date) -> dict:
         j = (today - e["date_limite"]).days
         k = "30 j et +" if j >= 30 else ("10-29 j" if j >= 10 else "1-9 j")
         buckets[k] += rules.reste_du(e)
-    lignes = db.rows("Releve_Bancaire")
+    lignes = [l for l in db.rows("Releve_Bancaire") if l.get("sens") != "DÉBIT"]   # crédits seulement
     lettrees = [l for l in lignes if l["statut"] == "LETTRÉ"]
-    auto = [l for l in lettrees if l["methode"] == "REF_EXACTE"]
+    auto = [l for l in lignes if l["methode"] == "REF_EXACTE"]   # rapprochés sans humain, même si rejetés ensuite
     file = db.where("File_Approbation", statut="EN ATTENTE")
     acr = [e for e in ech if e["projet_id"] == "ACR"]
     return {
@@ -32,6 +32,7 @@ def vue(db: Database, today: dt.date) -> dict:
         "buckets": buckets,
         "taux_auto": (len(auto) / len(lignes)) if lignes else None,
         "nb_lignes": len(lignes), "nb_auto": len(auto), "nb_lettrees": len(lettrees),
+        "nb_rejetes": len([l for l in lignes if l["statut"] == "REJETÉ"]),
         "file": len(file),
         "file_validation": len([f for f in file if f["niveau"] == "VALIDATION"]),
         "file_humain": len([f for f in file if f["niveau"] == "HUMAIN"]),
@@ -49,6 +50,7 @@ def vue(db: Database, today: dt.date) -> dict:
 def texte(v: dict) -> str:
     f = rules.fmt_aed
     taux = f"{v['taux_auto']:.0%}" if v["taux_auto"] is not None else "—"
+    rejet = f" (dont {v['nb_rejetes']} rejeté ensuite par la banque)" if v.get("nb_rejetes") else ""
     out = [
         f"VUE CFO · {v['date']}",
         f"  Encaissé (cumul)          {f(v['encaisse_total'])}",
@@ -56,7 +58,8 @@ def texte(v: dict) -> str:
         f"  En retard                 {f(v['en_retard'])}  ({v['nb_retard']} échéances)",
     ]
     out += [f"     · {k:<10} {f(x)}" for k, x in v["buckets"].items()]
-    out += [f"  Lettrage automatique      {taux} ({v['nb_auto']}/{v['nb_lignes']} lignes)",
+    out += [f"  Rapprochés sans humain    {v['nb_auto']} virements sur {v['nb_lignes']} ({taux}) · référence, "
+            f"payeur et montant exacts{rejet} · démo, données fictives",
             f"  File d'approbation        {v['file']} en attente ({v['file_validation']} à valider, "
             f"{v['file_humain']} décisions humaines) · {v['bloques']} bloquée(s)",
             f"  Messages préparés         {v['messages_prepares']} (mode shadow : aucun envoyé)"]

@@ -16,6 +16,7 @@ class Contexte:
     today: dt.date
     llm: LLM
     evenements: list[dict] = field(default_factory=list)
+    suspendus: dict[str, str] = field(default_factory=dict)   # acheteur → raison (signaux du cycle)
 
     def promoteur(self, projet_id: str) -> str:
         p = self.ctx_projet(projet_id)
@@ -29,6 +30,11 @@ class Contexte:
 
     def unite(self, unite_id: str) -> dict | None:
         return self.db.get("Unites", unite_id=unite_id)
+
+    def rediger(self, kind: str, langue: str, faits: dict) -> tuple[str, str, dict]:
+        """Brouillon + ce que les garde-fous doivent connaître pour le contrôler."""
+        objet, texte = self.llm.rediger(kind, langue, faits)
+        return objet, texte, {"faits": faits, "modele_texte": self.llm.texte_fixe(kind, langue)}
 
     def log(self, acteur: str, action: str, objet: str = "", detail: str = "", niveau: str = "") -> None:
         audit.log(self.db, self.today, acteur, "Agents", action, objet, detail, niveau)

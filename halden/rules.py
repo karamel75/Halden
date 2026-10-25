@@ -40,6 +40,22 @@ def niveau_grille(v1: int, v2: int, v3: int, c1: int, c2: int, c3: int, c4: int)
     return VALIDATION
 
 
+CRITERES = ("V1", "V2", "V3", "C1", "C2", "C3", "C4")
+
+
+def sensibilite(scores: list[int]) -> str:
+    """Quelles décisions basculent si une note bouge d'un point ? (la grille est fragile)"""
+    base = niveau_grille(*scores)
+    out = []
+    for i, nom in enumerate(CRITERES):
+        for d in (-1, 1):
+            s = list(scores)
+            s[i] = min(5, max(1, s[i] + d))
+            if s[i] != scores[i] and niveau_grille(*s) != base:
+                out.append(f"{nom}{'+' if d > 0 else '−'}1 → {niveau_grille(*s)}")
+    return " ; ".join(out) or "stable à ±1"
+
+
 def phase_grille(c3: int) -> str:
     return "Pilote" if c3 <= 2 else ("Ensuite (connecteur)" if c3 == 3 else "Vision (licence / tiers)")
 
@@ -95,7 +111,13 @@ def niveau_relance(db: Database, retard: int) -> str | None:
 
 
 # --- Rapprochement bancaire -----------------------------------------------------
-REF_RE = re.compile(r"HLD[-\s]?([A-Z]{3}-\d{4})[-\s]?(\d{2})", re.I)
+# Seuils (hypothèses de l'équipe, à recalibrer sur un vrai relevé anonymisé) :
+# - SEUIL_NOM = 0,72 : similarité minimale entre le donneur d'ordre et le nom de l'acheteur
+#   (tolère l'ordre inversé « HADDAD NADIA », un second prénom ou une faute de frappe).
+# - L'« indice » d'un rapprochement (0,55 + 0,35 × similarité, etc.) est un classement
+#   heuristique pour trier la file : ce n'est PAS une probabilité. Il ne décide jamais seul.
+SEUIL_NOM = 0.72
+OUVERTS = ("APPELÉ", "PARTIEL", "EN RETARD")
 
 
 def _plain(s: str) -> str:
@@ -108,48 +130,99 @@ def similarite_nom(a: str, b: str) -> float:
     return difflib.SequenceMatcher(None, " ".join(ta), " ".join(tb)).ratio()
 
 
+def trouver_reference(texte: str, projets: list[str]) -> str | None:
+    """Lit une référence d'échéance dans tous les formats vus sur les relevés :
+    HLD-ACR-0402-03, HLDACR040203, ACR-0402-03, « HLD ACR 0402 03 », « unit ACR-0402 instalment 3 »."""
+    codes = "|".join(map(re.escape, projets)) or "[A-Z]{3}"
+    haut = (texte or "").upper()
+    m = re.search(rf"(?:HLD)?({codes})(\d{{4}})(\d{{2}})(?!\d)", re.sub(r"[^A-Z0-9]", "", haut))
+    if m:
+        return reference(f"{m.group(1)}-{m.group(2)}", int(m.group(3)))
+    m = re.search(rf"({codes})[-\s]?(\d{{4}})\b.{{0,30}}?(?:INSTAL+MENT|INST\.?|ECHEANCE|ÉCHÉANCE|NO\.?|N°|#)\s*(\d{{1,2}})\b",
+                  haut)
+    if m:
+        return reference(f"{m.group(1)}-{m.group(2)}", int(m.group(3)))
+    return None
+
+
+def reference_de(ligne: dict, db: Database) -> str:
+    return trouver_reference(f"{ligne.get('libelle') or ''}", [p["projet_id"] for p in db.rows("Projets")]) or ""
+
+
 @dataclass
 class Rapprochement:
-    methode: str            # REF_EXACTE, REF_MONTANT_DIFFERENT, NOM_MONTANT, CUMUL_ACHETEUR, INCONNU
-    score: float
+    methode: str            # REF_EXACTE, REF_AUTRE_PAYEUR, REF_FRAIS_BANCAIRES, REF_MONTANT_DIFFERENT,
+                            # REF_DEJA_PAYEE, NOM_MONTANT, CUMUL_ACHETEUR, INCONNU
+    score: float            # indice de tri de la file (heuristique, pas une probabilité)
     echeances: list[dict]
     acheteur_id: str | None
     explication: str
 
+    @property
+    def automatique(self) -> bool:
+        return self.methode == "REF_EXACTE"
+
 
 def rapprocher(db: Database, ligne: dict) -> Rapprochement:
     montant = round(float(ligne["montant_aed"]), 2)
-    texte = f"{ligne.get('libelle') or ''} {ligne.get('donneur_ordre') or ''}"
-    ouvertes = [e for e in db.rows("Echeancier") if e["statut"] in ("APPELÉ", "PARTIEL", "EN RETARD")]
+    donneur = ligne.get("donneur_ordre") or ""
+    texte = f"{ligne.get('libelle') or ''} {donneur}"
+    tol = float(db.pack("tolerance_frais_bancaires_aed", 100))
+    ouvertes = [e for e in db.rows("Echeancier") if e["statut"] in OUVERTS]
+    acheteurs = {a["acheteur_id"]: a for a in db.rows("Acheteurs")}
 
-    m = REF_RE.search(texte)
-    if m:
-        ref = f"HLD-{m.group(1).upper()}-{m.group(2)}"
-        e = next((x for x in db.rows("Echeancier") if x["reference"] == ref), None)
-        if e and e["statut"] in ("APPELÉ", "PARTIEL", "EN RETARD"):
-            du = reste_du(e)
-            if abs(du - montant) < 0.01:
-                return Rapprochement("REF_EXACTE", 1.0, [e], e["acheteur_id"],
-                                     f"Référence {ref} et montant identique au reste dû ({fmt_aed(du)}).")
-            return Rapprochement("REF_MONTANT_DIFFERENT", 0.8, [e], e["acheteur_id"],
-                                 f"Référence {ref} trouvée mais {fmt_aed(montant)} reçu pour {fmt_aed(du)} dû.")
+    ref = trouver_reference(texte, [p["projet_id"] for p in db.rows("Projets")])
+    e = next((x for x in db.rows("Echeancier") if x["reference"] == ref), None) if ref else None
+    if e:
+        titulaire = acheteurs.get(e["acheteur_id"], {}).get("nom", "?")
+        sim = similarite_nom(donneur, titulaire)
+        if e["statut"] not in OUVERTS:
+            return Rapprochement("REF_DEJA_PAYEE", 0.4, [e], e["acheteur_id"],
+                                 f"Référence {ref} déjà soldée ({e['statut']}) : doublon, trop-perçu ou "
+                                 f"erreur de référence. À vérifier avant toute affectation.")
+        du = reste_du(e)
+        if sim < SEUIL_NOM:
+            autre = max(((a, similarite_nom(donneur, a["nom"])) for a in acheteurs.values()
+                         if a["acheteur_id"] != e["acheteur_id"]), key=lambda x: x[1], default=(None, 0))
+            piste = ""
+            if autre[0] and autre[1] >= SEUIL_NOM:
+                doit = [x for x in ouvertes if x["acheteur_id"] == autre[0]["acheteur_id"]
+                        and abs(reste_du(x) - montant) <= tol]
+                piste = (f" Le payeur ressemble à « {autre[0]['nom']} »"
+                         + (f", qui doit aussi ce montant ({doit[0]['echeance_id']})." if doit else "."))
+            return Rapprochement("REF_AUTRE_PAYEUR", 0.5, [e], e["acheteur_id"],
+                                 f"La référence {ref} appartient à « {titulaire} », mais le virement vient de "
+                                 f"« {donneur} » (similarité {sim:.0%}).{piste} Ne rien affecter sans vérifier "
+                                 f"l'avis de virement.")
+        if abs(du - montant) < 0.01:
+            return Rapprochement("REF_EXACTE", 1.0, [e], e["acheteur_id"],
+                                 f"Référence {ref}, payeur conforme (« {donneur} ») et montant identique au "
+                                 f"reste dû ({fmt_aed(du)}).")
+        if 0 < du - montant <= tol:
+            return Rapprochement("REF_FRAIS_BANCAIRES", 0.8, [e], e["acheteur_id"],
+                                 f"Référence {ref} et payeur conformes, mais {fmt_aed(du - montant)} de moins que "
+                                 f"le reste dû ({fmt_aed(du)}) : frais bancaires probables. Lettrer et décider "
+                                 f"si l'écart est réclamé ou abandonné.")
+        return Rapprochement("REF_MONTANT_DIFFERENT", 0.7, [e], e["acheteur_id"],
+                             f"Référence {ref} et payeur conformes, mais {fmt_aed(montant)} reçu pour "
+                             f"{fmt_aed(du)} dû (paiement partiel ou en trop).")
 
     # Pas de référence exploitable : nom du donneur d'ordre + montant.
     best = None
-    for a in db.rows("Acheteurs"):
-        sim = similarite_nom(ligne.get("donneur_ordre") or "", a["nom"])
-        if sim < 0.72:
+    for a in acheteurs.values():
+        sim = similarite_nom(donneur, a["nom"])
+        if sim < SEUIL_NOM:
             continue
-        siennes = [e for e in ouvertes if e["acheteur_id"] == a["acheteur_id"]]
-        exact = [e for e in siennes if abs(reste_du(e) - montant) < 0.01]
+        siennes = [x for x in ouvertes if x["acheteur_id"] == a["acheteur_id"]]
+        exact = [x for x in siennes if abs(reste_du(x) - montant) < 0.01]
         if exact:
             cand = Rapprochement("NOM_MONTANT", round(0.55 + 0.35 * sim, 2), [exact[0]], a["acheteur_id"],
                                  f"Pas de référence. Donneur d'ordre proche de « {a['nom']} » "
                                  f"(similarité {sim:.0%}) et montant égal à une échéance ouverte.")
         else:
-            echues = [e for e in siennes if e["date_limite"] and e["date_limite"] <= ligne["date_valeur"]]
+            echues = [x for x in siennes if x["date_limite"] and x["date_limite"] <= ligne["date_valeur"]]
             groupe = next((g for g in (echues, siennes)
-                           if len(g) > 1 and abs(sum(reste_du(e) for e in g) - montant) < 0.01), None)
+                           if len(g) > 1 and abs(sum(reste_du(x) for x in g) - montant) < 0.01), None)
             if not groupe:
                 continue
             cand = Rapprochement("CUMUL_ACHETEUR", round(0.5 + 0.3 * sim, 2), groupe, a["acheteur_id"],
@@ -161,6 +234,27 @@ def rapprocher(db: Database, ligne: dict) -> Rapprochement:
         return best
     return Rapprochement("INCONNU", 0.0, [], None,
                          "Aucune référence, aucun acheteur ni montant correspondant.")
+
+
+# --- Procédure de défaut de Dubaï (J+30) -----------------------------------------
+def procedure_defaut(db: Database, avancement_pct: float) -> str:
+    """Étapes de la procédure de défaut, lues dans le pack pays (à valider par un juriste émirati).
+
+    Le moteur ne déclenche rien : il prépare le dossier pour la décision humaine.
+    """
+    a = float(avancement_pct or 0)
+    if a >= 80:
+        option = db.pack("defaut_option_80_plus", "?")
+    elif a >= 60:
+        option = db.pack("defaut_option_60_80", "?")
+    else:
+        option = db.pack("defaut_option_moins_60", "?")
+    ligne = db.get("Pack_Pays", cle="defaut_notification_dld") or {}
+    return (f"1. {db.pack('defaut_notification_dld', '?')}\n"
+            f"2. Délai laissé à l'acheteur après notification : {db.pack('defaut_delai_dld_jours', '?')} jours.\n"
+            f"3. Avancement certifié {a:.0f} % → {option}\n"
+            f"Statut : {ligne.get('statut') or 'À VÉRIFIER'} · à faire valider par un juriste émirati avant tout "
+            f"usage réel.")
 
 
 # --- Garantie ------------------------------------------------------------------

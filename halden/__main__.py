@@ -61,6 +61,8 @@ def afficher_bilan(b: Bilan) -> None:
         print(f"  {GRIS}Événement{RESET}  {e['label']}")
     print()
     for agent in AGENTS:
+        if agent.nom not in b.par_agent:
+            continue
         s = b.par_agent.get(agent.nom, {})
         detail = "  ".join(f"{COULEUR.get(k, '')}{k.lower()} {v}{RESET}" for k, v in s.items()
                            if k != "propositions" and v)
@@ -106,13 +108,17 @@ def decider_lot(db: Database, today: dt.date, regle, interactif: bool) -> list[d
     return faits
 
 
-def demo(interactif: bool = False) -> None:
+def demo(interactif: bool = False, vision: bool = False) -> None:
     banniere()
     llm = LLM()
     print(f"\n  Moteur IA : {OR}{llm.libelle}{RESET} · base : {BASE.relative_to(BASE.parent.parent)}")
+    print(f"  Périmètre : {OR}{'VISION · les six agents' if vision else 'PILOTE · encaissements, Dubaï'}{RESET}"
+          f" · règle : chaque message vers un acheteur est validé par un humain")
     seed.generer(BASE, ENTREES, LOGO_PNG)
     historique.reinitialiser()
     db = Database.load(BASE)
+    if vision:
+        db.set_param("perimetre", "VISION")
 
     # Jour 1 : le certificat 40 % arrive, les messages du week-end aussi.
     b = cycle(db, dt.date(2026, 11, 2), llm, ENTREES)
@@ -135,8 +141,15 @@ def demo(interactif: bool = False) -> None:
     b = cycle(db, dt.date(2026, 11, 28), llm, ENTREES)
     afficher_bilan(b)
     titre("Le CFO valide les rapprochements ambigus (28 nov.)")
-    d = decider_lot(db, b.date, lambda i: (True, "Vérifié sur l'avis de virement")
-                    if i["niveau"] == "VALIDATION" and i["action"] == "LETTRAGE" else None, interactif)
+    def regle_j2(item):
+        if item["niveau"] != "VALIDATION":
+            return None
+        if item["action"] == "LETTRAGE" and "autre acheteur" in item["resume"]:
+            return False, "Payeur différent du titulaire : appeler les deux acheteurs avant d'affecter."
+        if item["action"] in ("LETTRAGE", "ANNULER_LETTRAGE"):
+            return True, "Vérifié sur l'avis de virement" if item["action"] == "LETTRAGE" else "Rejet confirmé par la banque"
+        return None
+    d = decider_lot(db, b.date, regle_j2, interactif)
     historique.ajouter(b, d)
     sauver(db)
 
@@ -161,6 +174,10 @@ def main(argv=None) -> None:
     sp = ap.add_subparsers(dest="cmd")
     d = sp.add_parser("demo", help="scénario complet en 3 journées")
     d.add_argument("--interactif", action="store_true", help="vous validez vous-même la file")
+    d.add_argument("--vision", action="store_true", help="les six agents (par défaut : pilote encaissements)")
+    r = sp.add_parser("reactiver", help="réactive le contact automatique d'un acheteur après décision humaine")
+    r.add_argument("acheteur_id")
+    r.add_argument("--par")
     sp.add_parser("init", help="recrée la base Excel fictive")
     c = sp.add_parser("cycle", help="lance un cycle des agents")
     c.add_argument("--date")
@@ -180,7 +197,18 @@ def main(argv=None) -> None:
     a = ap.parse_args(argv)
 
     if a.cmd in (None, "demo"):
-        demo(getattr(a, "interactif", False))
+        demo(getattr(a, "interactif", False), getattr(a, "vision", False))
+    elif a.cmd == "reactiver":
+        db = ouvrir()
+        ach = db.get("Acheteurs", acheteur_id=a.acheteur_id)
+        par = a.par or db.param("approbateur")
+        if not approvals.autorise(db, par):
+            raise SystemExit(f"{par} n'est pas autorisé")
+        ancien, ach["contact_auto"] = ach["contact_auto"], "ACTIF"
+        audit.log(db, db.param("date_simulation"), par, "Humain", "CONTACT_AUTO_RÉACTIVÉ", a.acheteur_id,
+                  f"était : {ancien}", "HUMAIN")
+        sauver(db)
+        print(f"{a.acheteur_id} : contact automatique réactivé")
     elif a.cmd == "init":
         seed.generer(BASE, ENTREES, LOGO_PNG)
         historique.reinitialiser()

@@ -204,7 +204,7 @@ textarea.draft{width:100%;min-height:150px;font-family:inherit;resize:vertical}
     <nav id="nav">
       <a href="#vue" data-v="vue"><span class="n">01</span>Vue d'ensemble</a>
       <a href="#file" data-v="file"><span class="n">02</span>File d'approbation<span class="badge" id="nb-file"></span></a>
-      <a href="#agents" data-v="agents"><span class="n">03</span>Les 6 agents</a>
+      <a href="#agents" data-v="agents"><span class="n">03</span>Les agents</a>
       <a href="#messages" data-v="messages"><span class="n">04</span>Messages préparés</a>
       <a href="#banque" data-v="banque"><span class="n">05</span>Rapprochement escrow</a>
       <a href="#journal" data-v="journal"><span class="n">06</span>Journal d'audit</a>
@@ -241,7 +241,7 @@ textarea.draft{width:100%;min-height:150px;font-family:inherit;resize:vertical}
 <script>
 let D = /*__DATA__*/null;
 const STATIQUE = /*__STATIQUE__*/false;
-const TITRES = {vue:"Vue d'ensemble", file:"File d'approbation", agents:"Les 6 agents", messages:"Messages préparés",
+const TITRES = {vue:"Vue d'ensemble", file:"File d'approbation", agents:"Les agents · pilote et vision", messages:"Messages préparés",
   banque:"Rapprochement escrow", journal:"Journal d'audit", grille:"Grille de décision & règles du pays"};
 const EYEBROWS = {vue:"Vue CFO du matin", file:"L'IA prépare · l'humain approuve", agents:"Parcours acheteur en 6 étapes",
   messages:"Mode shadow · rien n'est envoyé", banque:"Couche 2 · ingestion · couche 5 · règles", journal:"Tout est journalisé, chaîné par hash",
@@ -279,7 +279,7 @@ function vVue(){
     ["1","Entrées","Excel, relevés, certificats, messages",f.entrees+" éléments"],
     ["2","Ingestion","Import et normalisation",f.ingestion+" lignes bancaires"],
     ["3","Orchestrateur","Événements et minuteries J+3/J+10/J+30",f.evenements+" événements"],
-    ["4","6 agents","Comprendre et préparer",f.propositions+" propositions",true],
+    ["4","Agents","Comprendre et préparer",f.propositions+" propositions",true],
     ["5","Garde-fous","Règles, test argent/juridique, shadow",f.autorise+" auto · "+f.en_file+" en file · "+f.bloque+" bloqué"],
     ["6","Base","Dossier acheteur, pack pays, audit",f.lignes.toLocaleString("fr-FR")+" lignes Excel"],
     ["7","Sorties","File d'approbation, vue CFO, messages",f.sortants+" messages · "+f.decisions+" décisions"]];
@@ -289,13 +289,13 @@ function vVue(){
     <div style="position:relative">
       <div class="eyebrow">${esc(dfr(D.date))} · ${esc(D.promoteur)}</div>
       <div class="big"><small>AED</small>${(c.encaisse_total/1e6).toFixed(2)} M</div>
-      <p>encaissés au total sur les deux projets. ${esc(prj.nom)} est collecté à <b style="color:#fff">${c.acr_collecte_pct.toFixed(0)} %</b> de son prix de vente, avancement certifié ${esc(prj.avancement_pct)} %.</p>
+      <p>encaissés au total sur les deux projets. ${esc(prj.nom)} est collecté à <b style="color:#fff">${c.acr_collecte_pct.toFixed(0)} %</b> de son prix de vente, avancement certifié ${esc(prj.avancement_pct)} %. Ces fonds restent sur le compte escrow : le promoteur ne les retire qu'au rythme de l'avancement certifié. Ce que Halden améliore : moins de retards, moins de temps d'équipe, un dossier escrow prêt pour l'audit.</p>
       <div class="progress"><i style="width:${Math.min(100,c.acr_collecte_pct).toFixed(1)}%"></i></div>
     </div>
     <div class="figs">
       <div class="fig"><div class="v">${aedM(c.a_encaisser)}</div><div class="l">Appelé, non payé</div><div class="s">${c.nb_retard} échéances échues</div></div>
       <div class="fig"><div class="v">${aedM(c.buckets["30 j et +"])}</div><div class="l">Retard 30 j et +</div><div class="s">décision humaine</div></div>
-      <div class="fig"><div class="v">${taux}</div><div class="l">Lettrage auto</div><div class="s">${c.nb_auto}/${c.nb_lignes} virements</div></div>
+      <div class="fig"><div class="v">${taux}</div><div class="l">Rapprochés sans humain</div><div class="s">${c.nb_auto}/${c.nb_lignes} virements</div></div>
     </div>
   </div>
 
@@ -303,7 +303,7 @@ function vVue(){
     <div class="hd"><h3>Le moteur, couche par couche</h3><span class="sub">ce qui s'est passé depuis le début de la simulation</span></div>
     <div class="bd">
       <div class="pipe">${layers.map(l=>`<div class="layer ${l[4]?"hl":""}"><div class="ic">${l[0]}</div><div class="t">${l[1]}</div><div class="d">${l[2]}</div><div class="k">${l[3]}</div></div>`).join("")}</div>
-      <div class="rule"><span><b>L'IA</b> comprend et rédige</span><span><b>Les règles</b> calculent chaque montant</span><span><b>Un humain</b> engage le promoteur</span><span><b>Jamais</b> de mouvement d'argent</span></div>
+      <div class="rule"><span><b>L'IA</b> comprend et rédige</span><span><b>Les règles</b> calculent chaque montant</span><span><b>Un humain</b> valide chaque message à un acheteur</span><span><b>Jamais</b> de mouvement d'argent</span></div>
     </div>
   </div>
 
@@ -361,17 +361,19 @@ function itemLong(x){
 function vAgents(){
   return `<div class="agents">${D.agents.map((a,i)=>{
     const s = a.stats || {};
-    return `<div class="card agent ${a.nom==="Collections"?"pilot":""}"><div class="num">0${i+1}</div>
+    return `<div class="card agent ${a.nom==="Encaissements"?"pilot":""}"><div class="num">0${i+1}</div>
     <div class="et">${esc(a.etape.replace(/^\d · /,""))}</div><h3>${esc(a.nom)}</h3><p>${esc(a.mission)}</p>
     <div class="st"><span class="chip"><b>${s.propositions||0}</b> propositions</span>${["AUTONOME","RÈGLE","VALIDATION","HUMAIN","BLOQUÉ"].filter(k=>s[k]).map(k=>`<span class="lvl ${k}">${s[k]} ${k}</span>`).join("")}</div>
     <ul>${a.derniers.slice(-4).map(t=>`<li title="${esc(t)}">${esc(t)}</li>`).join("") || `<li>Rien pour l'instant</li>`}</ul></div>`; }).join("")}</div>
   <div class="card" style="margin-top:20px"><div class="hd"><h3>Comment ils travaillent ensemble</h3></div><div class="bd" style="color:var(--ink2);font-size:12.5px;line-height:1.7">
     L'<b>orchestrateur</b> détecte les événements (certificat de jalon, virement, message, réserve, minuterie J+3/J+10/J+30) et réveille les agents concernés.
     Chaque agent lit la base Excel et rend des <b>propositions</b>, jamais des actions. Les <b>garde-fous</b> les classent : autonome, règle, validation, humain ou bloqué,
-    d'après la grille de décision et le test « argent ou juridique ? ». Les montants viennent uniquement du <b>moteur de règles</b> ; un brouillon qui contient
-    un autre montant est rejeté. Exemple de bout en bout : le certificat 40 % arrive → <b>Collections</b> prépare 20 appels de fonds et <b>Relation acquéreurs</b>
-    l'actualité chantier → le CFO valide → le relevé escrow arrive → les virements référencés sont lettrés seuls, les ambigus attendent une validation
-    → les retards déclenchent J+3, J+10, puis une escalade humaine à J+30.</div></div>`;
+    d'après la grille de décision, le test « argent ou juridique ? » et la <b>règle du pilote : chaque message vers un acheteur est validé par un humain</b>.
+    Les montants, dates et pourcentages viennent uniquement du <b>moteur de règles</b> ; un brouillon qui en contient un autre est rejeté, même modifié à la main.
+    Exemple de bout en bout : le certificat 40 % arrive → <b>Encaissements</b> prépare 20 appels de fonds → le CFO valide → le relevé escrow arrive →
+    seuls les virements dont la référence, le payeur et le montant concordent sont rapprochés sans humain, les autres attendent une validation →
+    un acheteur en retard reçoit une seule relance préparée (validée), jamais pendant qu'un de ses paiements attend ou après un signal (« j'ai payé », avocat,
+    réclamation, difficulté) → à J+30, escalade humaine avec la procédure de défaut DLD. Les quatre autres agents restent en vision (<span class="mono">python -m halden demo --vision</span>).</div></div>`;
 }
 
 /* ---------------- Messages ---------------- */
@@ -388,11 +390,11 @@ function vMessages(){
 /* ---------------- Banque ---------------- */
 function vBanque(){
   const l = D.releve;
-  const st = {"LETTRÉ":"AUTONOME","EN VALIDATION":"VALIDATION","INCONNU":"HUMAIN","EN COURS":"RÈGLE","NOUVEAU":"RÈGLE"};
-  return `<div class="card"><div class="hd"><h3>Relevé du compte escrow</h3><span class="sub">${l.length} crédits importés · ${D.cfo.nb_auto} lettrés automatiquement par référence + montant</span></div><div class="bd scroll">
-  <table class="tbl"><thead><tr><th>Ligne</th><th>Date valeur</th><th>Donneur d'ordre</th><th>Libellé</th><th class="num-r">Montant</th><th>Méthode</th><th>Score</th><th>Échéance(s)</th><th>Statut</th></tr></thead><tbody>
+  const st = {"LETTRÉ":"AUTONOME","EN VALIDATION":"VALIDATION","INCONNU":"HUMAIN","EN COURS":"RÈGLE","NOUVEAU":"RÈGLE","REJETÉ":"BLOQUÉ","TRAITÉ":"RÈGLE"};
+  return `<div class="card"><div class="hd"><h3>Relevé du compte escrow</h3><span class="sub">${l.length} mouvements importés · ${D.cfo.nb_auto} virements sur ${D.cfo.nb_lignes} rapprochés sans humain (référence + payeur + montant) · démo, données fictives</span></div><div class="bd scroll">
+  <table class="tbl"><thead><tr><th>Ligne</th><th>Date valeur</th><th>Donneur d'ordre</th><th>Libellé</th><th class="num-r">Montant</th><th>Méthode</th><th title="Indice de tri de la file : heuristique, pas une probabilité">Indice</th><th>Échéance(s)</th><th>Statut</th></tr></thead><tbody>
   ${l.map(r=>`<tr><td class="mono">${esc(r.ligne_id)}</td><td style="white-space:nowrap">${esc(dfr(r.date_valeur))}</td><td>${esc(r.donneur_ordre)}</td><td class="mono lib">${esc(r.libelle)}</td>
-  <td class="num-r">${aed(r.montant_aed,2)}</td><td class="muted">${esc(r.methode||"")}</td><td>${r.score!=null?Math.round(r.score*100)+" %":""}</td><td class="mono">${esc(r.echeance_id||"")}</td>
+  <td class="num-r">${aed(r.montant_aed,2)}</td><td class="muted">${esc(r.methode||"")}</td><td>${r.score!=null?Number(r.score).toFixed(2):""}</td><td class="mono">${esc(r.echeance_id||"")}</td>
   <td><span class="lvl ${st[r.statut]||"RÈGLE"}">${esc(r.statut)}</span></td></tr>`).join("") || `<tr><td colspan="9" class="empty">Aucun relevé importé. Lancez un cycle au 28 novembre 2026.</td></tr>`}
   </tbody></table></div></div>`;
 }
@@ -413,12 +415,12 @@ function dots(n, c){ return `<span class="dots ${c||""}" title="${n}/5">${[1,2,3
 function vGrille(){
   return `<div class="card"><div class="hd"><h3>Grille de décision</h3><span class="sub">hypothèse d'équipe, à tester en entretiens · modifiable dans l'onglet Grille_Decision</span></div>
   <div class="bd"><div class="rule" style="margin:0 0 14px;border:0;padding:0">
-    <span>V1 &lt; 3 → <b>pas d'agent</b></span><span>C1 ≤ 1 → <b>règle</b></span><span>C2 = 5 et C4 = 5 → <b>humain</b></span><span>C2 ≥ 4 ou C4 ≥ 4 → <b>validation</b></span><span>C2 ≤ 2 → <b>autonome</b></span></div>
+    <span>V1 &lt; 3 → <b>pas d'agent</b></span><span>C1 ≤ 1 → <b>règle</b></span><span>C2 = 5 et C4 = 5 → <b>humain</b></span><span>C2 ≥ 4 ou C4 ≥ 4 → <b>validation</b></span><span>C2 ≤ 2 → <b>autonome</b></span><span>message à un acheteur → <b>toujours validé</b> (code)</span></div>
   <div class="legend">V1 volume · V2 temps équipe · V3 cash et risque · C1 ambiguïté des données · C2 conséquence d'une erreur · C3 effort d'intégration · C4 jugement humain (notes de 1 à 5)</div>
-  <div class="scroll"><table class="tbl"><thead><tr><th style="min-width:280px">Tâche</th><th>Agent</th><th title="Volume">V1</th><th title="Temps de l'équipe">V2</th><th title="Cash / risque">V3</th><th title="Ambiguïté des données">C1</th><th title="Conséquence d'une erreur">C2</th><th title="Effort d'intégration">C3</th><th title="Jugement humain">C4</th><th>Niveau</th><th>Phase</th></tr></thead><tbody>
+  <div class="scroll"><table class="tbl"><thead><tr><th style="min-width:280px">Tâche</th><th>Agent</th><th title="Volume">V1</th><th title="Temps de l'équipe">V2</th><th title="Cash / risque">V3</th><th title="Ambiguïté des données">C1</th><th title="Conséquence d'une erreur">C2</th><th title="Effort d'intégration">C3</th><th title="Jugement humain">C4</th><th>Niveau</th><th>Phase</th><th>Bascule à ±1</th></tr></thead><tbody>
   ${D.grille.map(g=>`<tr><td><b>${esc(g.tache_id)}</b> ${esc(g.tache)}<div class="muted">${esc(g.exemple)}</div></td><td class="muted" style="white-space:nowrap">${esc(g.agent)}</td>
   <td>${dots(g.V1_volume)}</td><td>${dots(g.V2_temps)}</td><td>${dots(g.V3_cash_risque)}</td><td>${dots(g.C1_ambiguite,"c")}</td><td>${dots(g.C2_consequence,"c")}</td><td>${dots(g.C3_integration,"c")}</td><td>${dots(g.C4_jugement,"c")}</td>
-  <td>${lvl(g.niveau)}</td><td class="muted">${esc(g.phase)}</td></tr>`).join("")}</tbody></table></div></div></div>
+  <td>${lvl(g.niveau)}</td><td class="muted">${esc(g.phase)}</td><td class="muted" style="min-width:180px">${esc(g.sensibilite||"")}</td></tr>`).join("")}</tbody></table></div></div></div>
   <div class="card" style="margin-top:20px"><div class="hd"><h3>Pack pays · Dubaï</h3><span class="sub">les règles du pays sont des données, qu'un avocat local corrige</span></div><div class="bd">
   <table class="tbl"><thead><tr><th>Règle</th><th>Valeur</th><th>Unité</th><th>Source</th><th>Statut</th></tr></thead><tbody>
   ${D.pack.map(p=>`<tr><td class="mono">${esc(p.cle)}</td><td><b>${esc(p.valeur)}</b></td><td class="muted">${esc(p.unite)}</td><td>${esc(p.source)}</td><td><span class="lvl ${p.statut==="FAIT"?"AUTONOME":p.statut==="À VÉRIFIER"?"VALIDATION":"RÈGLE"}">${esc(p.statut)}</span></td></tr>`).join("")}
