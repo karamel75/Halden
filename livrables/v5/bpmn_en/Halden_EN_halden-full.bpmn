@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:bioc="http://bpmn.io/schema/bpmn/biocolor/1.0" xmlns:color="http://www.omg.org/spec/BPMN/non-normative/color/1.0" id="Defs_halden-full" targetNamespace="https://halden.example/bpmn" exporter="Halden" exporterVersion="1.0">
+<bpmn:collaboration id="Collab_halden-full">
+<bpmn:participant id="B_src" name="Sources: buyers, site, bank, developer"/>
+<bpmn:participant id="B_out" name="Buyers and third parties (outgoing messages)"/>
+<bpmn:participant id="P_hal" name="Halden" processRef="Proc_P_hal"/>
+<bpmn:participant id="P_prom" name="Developer" processRef="Proc_P_prom"/>
+<bpmn:messageFlow id="M_B_src_E1" name="Events" sourceRef="B_src" targetRef="E1"/>
+<bpmn:messageFlow id="M_E8_H0" name="Request" sourceRef="E8" targetRef="H0"/>
+<bpmn:messageFlow id="M_H1_E9" name="Decision" sourceRef="H1" targetRef="E9"/>
+<bpmn:messageFlow id="M_E11_B_out" name="Approved message" sourceRef="E11" targetRef="B_out"/>
+<bpmn:messageFlow id="M_T2_H3" name="Summary" sourceRef="T2" targetRef="H3"/>
+</bpmn:collaboration>
+<bpmn:process id="Proc_P_hal" isExecutable="false">
+<bpmn:laneSet id="LS_P_hal">
+<bpmn:lane id="L_can" name="Channels">
+<bpmn:flowNodeRef>E1</bpmn:flowNodeRef>
+<bpmn:flowNodeRef>E2</bpmn:flowNodeRef>
+<bpmn:flowNodeRef>E11</bpmn:flowNodeRef>
+</bpmn:lane>
+<bpmn:lane id="L_ag" name="Agents">
+<bpmn:flowNodeRef>E3</bpmn:flowNodeRef>
+<bpmn:flowNodeRef>E4</bpmn:flowNodeRef>
+</bpmn:lane>
+<bpmn:lane id="L_gf" name="Guardrails">
+<bpmn:flowNodeRef>E5</bpmn:flowNodeRef>
+<bpmn:flowNodeRef>E6</bpmn:flowNodeRef>
+<bpmn:flowNodeRef>E7</bpmn:flowNodeRef>
+<bpmn:flowNodeRef>E8</bpmn:flowNodeRef>
+<bpmn:flowNodeRef>E9</bpmn:flowNodeRef>
+<bpmn:flowNodeRef>E10</bpmn:flowNodeRef>
+<bpmn:flowNodeRef>E12</bpmn:flowNodeRef>
+<bpmn:flowNodeRef>E13</bpmn:flowNodeRef>
+<bpmn:flowNodeRef>E14</bpmn:flowNodeRef>
+</bpmn:lane>
+<bpmn:lane id="L_db" name="Data layer">
+<bpmn:flowNodeRef>T1</bpmn:flowNodeRef>
+<bpmn:flowNodeRef>T2</bpmn:flowNodeRef>
+<bpmn:flowNodeRef>T3</bpmn:flowNodeRef>
+</bpmn:lane>
+</bpmn:laneSet>
+<bpmn:startEvent id="E1" name="An event arrives: message, milestone, transfer, claim"><bpmn:outgoing>F_E1_E2</bpmn:outgoing><bpmn:messageEventDefinition id="ED_E1"/></bpmn:startEvent>
+<bpmn:serviceTask id="E2" name="Normalise, link to the buyer and project"><bpmn:incoming>F_E1_E2</bpmn:incoming><bpmn:outgoing>F_E2_E3</bpmn:outgoing></bpmn:serviceTask>
+<bpmn:serviceTask id="E3" name="Route to the right agent"><bpmn:incoming>F_E2_E3</bpmn:incoming><bpmn:outgoing>F_E3_E4</bpmn:outgoing></bpmn:serviceTask>
+<bpmn:serviceTask id="E4" name="One of the 6 agents prepares the action"><bpmn:incoming>F_E3_E4</bpmn:incoming><bpmn:outgoing>F_E4_E5</bpmn:outgoing><bpmn:property id="Prop_D_D1_E4" name="__targetRef_placeholder"/><bpmn:dataInputAssociation id="D_D1_E4"><bpmn:sourceRef>D1</bpmn:sourceRef><bpmn:targetRef>Prop_D_D1_E4</bpmn:targetRef></bpmn:dataInputAssociation></bpmn:serviceTask>
+<bpmn:dataStoreReference id="D1" name="Shared memory: one file per buyer"/>
+<bpmn:businessRuleTask id="E5" name="Check against the country pack (caps, deadlines)"><bpmn:incoming>F_E4_E5</bpmn:incoming><bpmn:outgoing>F_E5_E6</bpmn:outgoing><bpmn:property id="Prop_D_D2_E5" name="__targetRef_placeholder"/><bpmn:dataInputAssociation id="D_D2_E5"><bpmn:sourceRef>D2</bpmn:sourceRef><bpmn:targetRef>Prop_D_D2_E5</bpmn:targetRef></bpmn:dataInputAssociation></bpmn:businessRuleTask>
+<bpmn:dataStoreReference id="D2" name="Country packs, approved by a lawyer"/>
+<bpmn:exclusiveGateway id="E6" name="Money, legal or anomaly?"><bpmn:incoming>F_E5_E6</bpmn:incoming><bpmn:outgoing>F_E6_E7</bpmn:outgoing><bpmn:outgoing>F_E6_E8</bpmn:outgoing></bpmn:exclusiveGateway>
+<bpmn:serviceTask id="E7" name="Run straight away: update, reminder, answer"><bpmn:incoming>F_E6_E7</bpmn:incoming><bpmn:outgoing>F_E7_E13</bpmn:outgoing></bpmn:serviceTask>
+<bpmn:sendTask id="E8" name="Place in the approval queue"><bpmn:incoming>F_E6_E8</bpmn:incoming><bpmn:outgoing>F_E8_E9</bpmn:outgoing></bpmn:sendTask>
+<bpmn:intermediateCatchEvent id="E9" name="Decision received"><bpmn:incoming>F_E8_E9</bpmn:incoming><bpmn:outgoing>F_E9_E10</bpmn:outgoing><bpmn:messageEventDefinition id="ED_E9"/></bpmn:intermediateCatchEvent>
+<bpmn:exclusiveGateway id="E10" name="Approved?"><bpmn:incoming>F_E9_E10</bpmn:incoming><bpmn:outgoing>F_E10_E11</bpmn:outgoing><bpmn:outgoing>F_E10_E12</bpmn:outgoing></bpmn:exclusiveGateway>
+<bpmn:sendTask id="E11" name="Send on behalf of the developer (email, WhatsApp)"><bpmn:incoming>F_E10_E11</bpmn:incoming><bpmn:outgoing>F_E11_E13</bpmn:outgoing></bpmn:sendTask>
+<bpmn:serviceTask id="E12" name="Close or rework the request"><bpmn:incoming>F_E10_E12</bpmn:incoming><bpmn:outgoing>F_E12_E13</bpmn:outgoing></bpmn:serviceTask>
+<bpmn:serviceTask id="E13" name="Log: who, what, when, why"><bpmn:incoming>F_E7_E13</bpmn:incoming><bpmn:incoming>F_E12_E13</bpmn:incoming><bpmn:incoming>F_E11_E13</bpmn:incoming><bpmn:outgoing>F_E13_E14</bpmn:outgoing><bpmn:dataOutputAssociation id="D_E13_D3"><bpmn:targetRef>D3</bpmn:targetRef></bpmn:dataOutputAssociation></bpmn:serviceTask>
+<bpmn:dataStoreReference id="D3" name="Audit log"/>
+<bpmn:endEvent id="E14" name="Action logged"><bpmn:incoming>F_E13_E14</bpmn:incoming></bpmn:endEvent>
+<bpmn:startEvent id="T1" name="Every morning"><bpmn:outgoing>F_T1_T2</bpmn:outgoing><bpmn:timerEventDefinition id="ED_T1"/></bpmn:startEvent>
+<bpmn:serviceTask id="T2" name="Compose the control-tower summary"><bpmn:incoming>F_T1_T2</bpmn:incoming><bpmn:outgoing>F_T2_T3</bpmn:outgoing><bpmn:property id="Prop_D_D3_T2" name="__targetRef_placeholder"/><bpmn:dataInputAssociation id="D_D3_T2"><bpmn:sourceRef>D3</bpmn:sourceRef><bpmn:targetRef>Prop_D_D3_T2</bpmn:targetRef></bpmn:dataInputAssociation></bpmn:serviceTask>
+<bpmn:endEvent id="T3" name="Summary sent"><bpmn:incoming>F_T2_T3</bpmn:incoming></bpmn:endEvent>
+<bpmn:sequenceFlow id="F_E1_E2" sourceRef="E1" targetRef="E2"/>
+<bpmn:sequenceFlow id="F_E2_E3" sourceRef="E2" targetRef="E3"/>
+<bpmn:sequenceFlow id="F_E3_E4" sourceRef="E3" targetRef="E4"/>
+<bpmn:sequenceFlow id="F_E4_E5" sourceRef="E4" targetRef="E5"/>
+<bpmn:sequenceFlow id="F_E5_E6" sourceRef="E5" targetRef="E6"/>
+<bpmn:sequenceFlow id="F_E6_E7" name="no" sourceRef="E6" targetRef="E7"/>
+<bpmn:sequenceFlow id="F_E6_E8" name="yes" sourceRef="E6" targetRef="E8"/>
+<bpmn:sequenceFlow id="F_E8_E9" sourceRef="E8" targetRef="E9"/>
+<bpmn:sequenceFlow id="F_E9_E10" sourceRef="E9" targetRef="E10"/>
+<bpmn:sequenceFlow id="F_E10_E11" name="yes" sourceRef="E10" targetRef="E11"/>
+<bpmn:sequenceFlow id="F_E10_E12" name="no" sourceRef="E10" targetRef="E12"/>
+<bpmn:sequenceFlow id="F_E7_E13" sourceRef="E7" targetRef="E13"/>
+<bpmn:sequenceFlow id="F_E12_E13" sourceRef="E12" targetRef="E13"/>
+<bpmn:sequenceFlow id="F_E11_E13" sourceRef="E11" targetRef="E13"/>
+<bpmn:sequenceFlow id="F_E13_E14" sourceRef="E13" targetRef="E14"/>
+<bpmn:sequenceFlow id="F_T1_T2" sourceRef="T1" targetRef="T2"/>
+<bpmn:sequenceFlow id="F_T2_T3" sourceRef="T2" targetRef="T3"/>
+</bpmn:process>
+<bpmn:process id="Proc_P_prom" isExecutable="false">
+<bpmn:laneSet id="LS_P_prom">
+<bpmn:lane id="L_eq" name="Team · approval queue">
+<bpmn:flowNodeRef>H0</bpmn:flowNodeRef>
+<bpmn:flowNodeRef>H1</bpmn:flowNodeRef>
+<bpmn:flowNodeRef>H2</bpmn:flowNodeRef>
+</bpmn:lane>
+<bpmn:lane id="L_dir" name="Management · control tower">
+<bpmn:flowNodeRef>H3</bpmn:flowNodeRef>
+<bpmn:flowNodeRef>H4</bpmn:flowNodeRef>
+<bpmn:flowNodeRef>H5</bpmn:flowNodeRef>
+</bpmn:lane>
+</bpmn:laneSet>
+<bpmn:startEvent id="H0" name="Request queued"><bpmn:outgoing>F_H0_H1</bpmn:outgoing><bpmn:messageEventDefinition id="ED_H0"/></bpmn:startEvent>
+<bpmn:userTask id="H1" name="Approve, sign or decide"><bpmn:incoming>F_H0_H1</bpmn:incoming><bpmn:outgoing>F_H1_H2</bpmn:outgoing></bpmn:userTask>
+<bpmn:endEvent id="H2" name="Decision made"><bpmn:incoming>F_H1_H2</bpmn:incoming></bpmn:endEvent>
+<bpmn:startEvent id="H3" name="Morning summary received"><bpmn:outgoing>F_H3_H4</bpmn:outgoing><bpmn:messageEventDefinition id="ED_H3"/></bpmn:startEvent>
+<bpmn:userTask id="H4" name="Read the control tower: cash, late payers, site, defects, claims"><bpmn:incoming>F_H3_H4</bpmn:incoming><bpmn:outgoing>F_H4_H5</bpmn:outgoing></bpmn:userTask>
+<bpmn:endEvent id="H5" name="Today's priorities"><bpmn:incoming>F_H4_H5</bpmn:incoming></bpmn:endEvent>
+<bpmn:sequenceFlow id="F_H0_H1" sourceRef="H0" targetRef="H1"/>
+<bpmn:sequenceFlow id="F_H1_H2" sourceRef="H1" targetRef="H2"/>
+<bpmn:sequenceFlow id="F_H3_H4" sourceRef="H3" targetRef="H4"/>
+<bpmn:sequenceFlow id="F_H4_H5" sourceRef="H4" targetRef="H5"/>
+</bpmn:process>
+<bpmndi:BPMNDiagram id="Diag_halden-full"><bpmndi:BPMNPlane id="Plane_halden-full" bpmnElement="Collab_halden-full">
+<bpmndi:BPMNShape id="B_src_di" bpmnElement="B_src" isHorizontal="true" bioc:stroke="#3A4A63" color:border-color="#3A4A63"><dc:Bounds x="20" y="20" width="472" height="60"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="B_out_di" bpmnElement="B_out" isHorizontal="true" bioc:stroke="#3A4A63" color:border-color="#3A4A63"><dc:Bounds x="508" y="20" width="1702" height="60"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="P_hal_di" bpmnElement="P_hal" isHorizontal="true" bioc:stroke="#0B1426" color:border-color="#0B1426"><dc:Bounds x="20" y="120" width="2190" height="550"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="L_can_di" bpmnElement="L_can" isHorizontal="true" bioc:stroke="#0B1426" color:border-color="#0B1426"><dc:Bounds x="50" y="120" width="2160" height="110"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="L_ag_di" bpmnElement="L_ag" isHorizontal="true" bioc:stroke="#0B1426" color:border-color="#0B1426"><dc:Bounds x="50" y="230" width="2160" height="120"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="L_gf_di" bpmnElement="L_gf" isHorizontal="true" bioc:stroke="#0B1426" color:border-color="#0B1426"><dc:Bounds x="50" y="350" width="2160" height="190"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="L_db_di" bpmnElement="L_db" isHorizontal="true" bioc:stroke="#0B1426" color:border-color="#0B1426"><dc:Bounds x="50" y="540" width="2160" height="130"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="P_prom_di" bpmnElement="P_prom" isHorizontal="true" bioc:stroke="#0B1426" color:border-color="#0B1426"><dc:Bounds x="20" y="710" width="2190" height="220"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="L_eq_di" bpmnElement="L_eq" isHorizontal="true" bioc:stroke="#0B1426" color:border-color="#0B1426"><dc:Bounds x="50" y="710" width="2160" height="110"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="L_dir_di" bpmnElement="L_dir" isHorizontal="true" bioc:stroke="#0B1426" color:border-color="#0B1426"><dc:Bounds x="50" y="820" width="2160" height="110"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="E1_di" bpmnElement="E1" bioc:stroke="#0B1426" color:border-color="#0B1426" bioc:fill="#FFFFFF" color:background-color="#FFFFFF"><dc:Bounds x="132" y="157" width="36" height="36"/><bpmndi:BPMNLabel><dc:Bounds x="100" y="198" width="100" height="27"/></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="E2_di" bpmnElement="E2" bioc:stroke="#0B1426" color:border-color="#0B1426" bioc:fill="#F4F5F7" color:background-color="#F4F5F7"><dc:Bounds x="236" y="140" width="108" height="70"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="E3_di" bpmnElement="E3" bioc:stroke="#0B1426" color:border-color="#0B1426" bioc:fill="#F4F5F7" color:background-color="#F4F5F7"><dc:Bounds x="376" y="255" width="108" height="70"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="E4_di" bpmnElement="E4" bioc:stroke="#0B1426" color:border-color="#0B1426" bioc:fill="#F4F5F7" color:background-color="#F4F5F7"><dc:Bounds x="516" y="255" width="108" height="70"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="D1_di" bpmnElement="D1" bioc:stroke="#3A4A63" color:border-color="#3A4A63" bioc:fill="#FFFFFF" color:background-color="#FFFFFF"><dc:Bounds x="545" y="580" width="50" height="50"/><bpmndi:BPMNLabel><dc:Bounds x="520" y="635" width="100" height="27"/></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="E5_di" bpmnElement="E5" bioc:stroke="#0B1426" color:border-color="#0B1426" bioc:fill="#F4F5F7" color:background-color="#F4F5F7"><dc:Bounds x="656" y="452" width="108" height="70"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="D2_di" bpmnElement="D2" bioc:stroke="#3A4A63" color:border-color="#3A4A63" bioc:fill="#FFFFFF" color:background-color="#FFFFFF"><dc:Bounds x="685" y="580" width="50" height="50"/><bpmndi:BPMNLabel><dc:Bounds x="660" y="635" width="100" height="27"/></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="E6_di" bpmnElement="E6" isMarkerVisible="true" bioc:stroke="#0B1426" color:border-color="#0B1426" bioc:fill="#FFFFFF" color:background-color="#FFFFFF"><dc:Bounds x="825" y="462" width="50" height="50"/><bpmndi:BPMNLabel><dc:Bounds x="800" y="518" width="100" height="27"/></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="E7_di" bpmnElement="E7" bioc:stroke="#0B1426" color:border-color="#0B1426" bioc:fill="#F4F5F7" color:background-color="#F4F5F7"><dc:Bounds x="936" y="370" width="108" height="70"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="E8_di" bpmnElement="E8" bioc:stroke="#0B1426" color:border-color="#0B1426" bioc:fill="#F4F5F7" color:background-color="#F4F5F7"><dc:Bounds x="936" y="452" width="108" height="70"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="E9_di" bpmnElement="E9" bioc:stroke="#0B1426" color:border-color="#0B1426" bioc:fill="#FFFFFF" color:background-color="#FFFFFF"><dc:Bounds x="1112" y="469" width="36" height="36"/><bpmndi:BPMNLabel><dc:Bounds x="1080" y="510" width="100" height="27"/></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="E10_di" bpmnElement="E10" isMarkerVisible="true" bioc:stroke="#0B1426" color:border-color="#0B1426" bioc:fill="#FFFFFF" color:background-color="#FFFFFF"><dc:Bounds x="1245" y="462" width="50" height="50"/><bpmndi:BPMNLabel><dc:Bounds x="1220" y="518" width="100" height="27"/></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="E11_di" bpmnElement="E11" bioc:stroke="#0B1426" color:border-color="#0B1426" bioc:fill="#F4F5F7" color:background-color="#F4F5F7"><dc:Bounds x="1356" y="140" width="108" height="70"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="E12_di" bpmnElement="E12" bioc:stroke="#0B1426" color:border-color="#0B1426" bioc:fill="#F4F5F7" color:background-color="#F4F5F7"><dc:Bounds x="1356" y="452" width="108" height="70"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="E13_di" bpmnElement="E13" bioc:stroke="#0B1426" color:border-color="#0B1426" bioc:fill="#F4F5F7" color:background-color="#F4F5F7"><dc:Bounds x="1496" y="452" width="108" height="70"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="D3_di" bpmnElement="D3" bioc:stroke="#3A4A63" color:border-color="#3A4A63" bioc:fill="#FFFFFF" color:background-color="#FFFFFF"><dc:Bounds x="1525" y="580" width="50" height="50"/><bpmndi:BPMNLabel><dc:Bounds x="1500" y="635" width="100" height="27"/></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="E14_di" bpmnElement="E14" bioc:stroke="#0B1426" color:border-color="#0B1426" bioc:fill="#FFFFFF" color:background-color="#FFFFFF"><dc:Bounds x="1672" y="469" width="36" height="36"/><bpmndi:BPMNLabel><dc:Bounds x="1640" y="510" width="100" height="27"/></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="T1_di" bpmnElement="T1" bioc:stroke="#0B1426" color:border-color="#0B1426" bioc:fill="#FFFFFF" color:background-color="#FFFFFF"><dc:Bounds x="1672" y="587" width="36" height="36"/><bpmndi:BPMNLabel><dc:Bounds x="1640" y="628" width="100" height="27"/></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="T2_di" bpmnElement="T2" bioc:stroke="#0B1426" color:border-color="#0B1426" bioc:fill="#F4F5F7" color:background-color="#F4F5F7"><dc:Bounds x="1776" y="570" width="108" height="70"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="T3_di" bpmnElement="T3" bioc:stroke="#0B1426" color:border-color="#0B1426" bioc:fill="#FFFFFF" color:background-color="#FFFFFF"><dc:Bounds x="1952" y="587" width="36" height="36"/><bpmndi:BPMNLabel><dc:Bounds x="1920" y="628" width="100" height="27"/></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="H0_di" bpmnElement="H0" bioc:stroke="#0B1426" color:border-color="#0B1426" bioc:fill="#FFFFFF" color:background-color="#FFFFFF"><dc:Bounds x="972" y="747" width="36" height="36"/><bpmndi:BPMNLabel><dc:Bounds x="872" y="752" width="96" height="27"/></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="H1_di" bpmnElement="H1" bioc:stroke="#8A6A3A" color:border-color="#8A6A3A" bioc:fill="#FFFFFF" color:background-color="#FFFFFF"><dc:Bounds x="1076" y="730" width="108" height="70"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="H2_di" bpmnElement="H2" bioc:stroke="#0B1426" color:border-color="#0B1426" bioc:fill="#FFFFFF" color:background-color="#FFFFFF"><dc:Bounds x="1252" y="747" width="36" height="36"/><bpmndi:BPMNLabel><dc:Bounds x="1220" y="788" width="100" height="27"/></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="H3_di" bpmnElement="H3" bioc:stroke="#0B1426" color:border-color="#0B1426" bioc:fill="#FFFFFF" color:background-color="#FFFFFF"><dc:Bounds x="1812" y="857" width="36" height="36"/><bpmndi:BPMNLabel><dc:Bounds x="1712" y="862" width="96" height="27"/></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="H4_di" bpmnElement="H4" bioc:stroke="#8A6A3A" color:border-color="#8A6A3A" bioc:fill="#FFFFFF" color:background-color="#FFFFFF"><dc:Bounds x="1916" y="840" width="108" height="70"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="H5_di" bpmnElement="H5" bioc:stroke="#0B1426" color:border-color="#0B1426" bioc:fill="#FFFFFF" color:background-color="#FFFFFF"><dc:Bounds x="2092" y="857" width="36" height="36"/><bpmndi:BPMNLabel><dc:Bounds x="2060" y="898" width="100" height="27"/></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+<bpmndi:BPMNEdge id="F_E1_E2_di" bpmnElement="F_E1_E2" bioc:stroke="#0B1426" color:border-color="#0B1426"><di:waypoint x="168" y="175"/><di:waypoint x="236" y="175"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="F_E2_E3_di" bpmnElement="F_E2_E3" bioc:stroke="#0B1426" color:border-color="#0B1426"><di:waypoint x="344" y="175"/><di:waypoint x="358" y="175"/><di:waypoint x="358" y="290"/><di:waypoint x="376" y="290"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="F_E3_E4_di" bpmnElement="F_E3_E4" bioc:stroke="#0B1426" color:border-color="#0B1426"><di:waypoint x="484" y="290"/><di:waypoint x="516" y="290"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="F_E4_E5_di" bpmnElement="F_E4_E5" bioc:stroke="#0B1426" color:border-color="#0B1426"><di:waypoint x="624" y="290"/><di:waypoint x="638" y="290"/><di:waypoint x="638" y="487"/><di:waypoint x="656" y="487"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="F_E5_E6_di" bpmnElement="F_E5_E6" bioc:stroke="#0B1426" color:border-color="#0B1426"><di:waypoint x="764" y="487"/><di:waypoint x="825" y="487"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="F_E6_E7_di" bpmnElement="F_E6_E7" bioc:stroke="#0B1426" color:border-color="#0B1426"><di:waypoint x="850" y="462"/><di:waypoint x="850" y="405"/><di:waypoint x="936" y="405"/><bpmndi:BPMNLabel><dc:Bounds x="856" y="440" width="80" height="14"/></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="F_E6_E8_di" bpmnElement="F_E6_E8" bioc:stroke="#0B1426" color:border-color="#0B1426"><di:waypoint x="875" y="487"/><di:waypoint x="936" y="487"/><bpmndi:BPMNLabel><dc:Bounds x="881" y="469" width="80" height="14"/></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="F_E8_E9_di" bpmnElement="F_E8_E9" bioc:stroke="#0B1426" color:border-color="#0B1426"><di:waypoint x="1044" y="487"/><di:waypoint x="1112" y="487"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="F_E9_E10_di" bpmnElement="F_E9_E10" bioc:stroke="#0B1426" color:border-color="#0B1426"><di:waypoint x="1148" y="487"/><di:waypoint x="1245" y="487"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="F_E10_E11_di" bpmnElement="F_E10_E11" bioc:stroke="#0B1426" color:border-color="#0B1426"><di:waypoint x="1270" y="462"/><di:waypoint x="1270" y="175"/><di:waypoint x="1356" y="175"/><bpmndi:BPMNLabel><dc:Bounds x="1276" y="440" width="80" height="14"/></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="F_E10_E12_di" bpmnElement="F_E10_E12" bioc:stroke="#0B1426" color:border-color="#0B1426"><di:waypoint x="1295" y="487"/><di:waypoint x="1356" y="487"/><bpmndi:BPMNLabel><dc:Bounds x="1301" y="469" width="80" height="14"/></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="F_E7_E13_di" bpmnElement="F_E7_E13" bioc:stroke="#0B1426" color:border-color="#0B1426"><di:waypoint x="1044" y="405"/><di:waypoint x="1478" y="405"/><di:waypoint x="1478" y="487"/><di:waypoint x="1496" y="487"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="F_E12_E13_di" bpmnElement="F_E12_E13" bioc:stroke="#0B1426" color:border-color="#0B1426"><di:waypoint x="1464" y="487"/><di:waypoint x="1496" y="487"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="F_E11_E13_di" bpmnElement="F_E11_E13" bioc:stroke="#0B1426" color:border-color="#0B1426"><di:waypoint x="1464" y="175"/><di:waypoint x="1550" y="175"/><di:waypoint x="1550" y="452"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="F_E13_E14_di" bpmnElement="F_E13_E14" bioc:stroke="#0B1426" color:border-color="#0B1426"><di:waypoint x="1604" y="487"/><di:waypoint x="1672" y="487"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="F_T1_T2_di" bpmnElement="F_T1_T2" bioc:stroke="#0B1426" color:border-color="#0B1426"><di:waypoint x="1708" y="605"/><di:waypoint x="1776" y="605"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="F_T2_T3_di" bpmnElement="F_T2_T3" bioc:stroke="#0B1426" color:border-color="#0B1426"><di:waypoint x="1884" y="605"/><di:waypoint x="1952" y="605"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="F_H0_H1_di" bpmnElement="F_H0_H1" bioc:stroke="#0B1426" color:border-color="#0B1426"><di:waypoint x="1008" y="765"/><di:waypoint x="1076" y="765"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="F_H1_H2_di" bpmnElement="F_H1_H2" bioc:stroke="#0B1426" color:border-color="#0B1426"><di:waypoint x="1184" y="765"/><di:waypoint x="1252" y="765"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="F_H3_H4_di" bpmnElement="F_H3_H4" bioc:stroke="#0B1426" color:border-color="#0B1426"><di:waypoint x="1848" y="875"/><di:waypoint x="1916" y="875"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="F_H4_H5_di" bpmnElement="F_H4_H5" bioc:stroke="#0B1426" color:border-color="#0B1426"><di:waypoint x="2024" y="875"/><di:waypoint x="2092" y="875"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="D_D1_E4_di" bpmnElement="D_D1_E4" bioc:stroke="#3A4A63" color:border-color="#3A4A63"><di:waypoint x="570" y="580"/><di:waypoint x="570" y="325"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="D_D2_E5_di" bpmnElement="D_D2_E5" bioc:stroke="#3A4A63" color:border-color="#3A4A63"><di:waypoint x="710" y="580"/><di:waypoint x="710" y="522"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="D_E13_D3_di" bpmnElement="D_E13_D3" bioc:stroke="#3A4A63" color:border-color="#3A4A63"><di:waypoint x="1550" y="522"/><di:waypoint x="1550" y="580"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="D_D3_T2_di" bpmnElement="D_D3_T2" bioc:stroke="#3A4A63" color:border-color="#3A4A63"><di:waypoint x="1550" y="630"/><di:waypoint x="1550" y="650"/><di:waypoint x="1830" y="650"/><di:waypoint x="1830" y="637"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="M_B_src_E1_di" bpmnElement="M_B_src_E1" bioc:stroke="#5B6472" color:border-color="#5B6472"><di:waypoint x="150" y="80"/><di:waypoint x="150" y="157"/><bpmndi:BPMNLabel><dc:Bounds x="156" y="108" width="84" height="27"/></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="M_E8_H0_di" bpmnElement="M_E8_H0" bioc:stroke="#5B6472" color:border-color="#5B6472"><di:waypoint x="990" y="522"/><di:waypoint x="990" y="747"/><bpmndi:BPMNLabel><dc:Bounds x="996" y="624" width="84" height="27"/></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="M_H1_E9_di" bpmnElement="M_H1_E9" bioc:stroke="#5B6472" color:border-color="#5B6472"><di:waypoint x="1130" y="730"/><di:waypoint x="1130" y="505"/><bpmndi:BPMNLabel><dc:Bounds x="1136" y="608" width="84" height="27"/></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="M_E11_B_out_di" bpmnElement="M_E11_B_out" bioc:stroke="#5B6472" color:border-color="#5B6472"><di:waypoint x="1410" y="140"/><di:waypoint x="1410" y="80"/><bpmndi:BPMNLabel><dc:Bounds x="1416" y="100" width="84" height="27"/></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="M_T2_H3_di" bpmnElement="M_T2_H3" bioc:stroke="#5B6472" color:border-color="#5B6472"><di:waypoint x="1830" y="640"/><di:waypoint x="1830" y="857"/><bpmndi:BPMNLabel><dc:Bounds x="1836" y="738" width="84" height="27"/></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+</bpmndi:BPMNPlane></bpmndi:BPMNDiagram></bpmn:definitions>
